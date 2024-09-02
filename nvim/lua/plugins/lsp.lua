@@ -7,7 +7,6 @@ return {
 			"williamboman/mason.nvim",
 			"williamboman/mason-lspconfig.nvim",
 		},
-
 		config = function()
 			local lspconfig = require("lspconfig")
 			local masonlsp = require("mason-lspconfig")
