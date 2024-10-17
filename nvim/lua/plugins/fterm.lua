@@ -4,24 +4,6 @@ return {
 		"numToStr/FTerm.nvim",
 		name = "FTerm.scratch.nvim",
 		config = function()
-			local fterm = require("FTerm")
-
-			-- npm run dev 명령어 등록 :NpmRunDev
-			local npm_run_dev = fterm:new({ cmd = {
-				"npm",
-				"run",
-				"dev",
-			} })
-
-			local function toggle()
-				npm_run_dev:toggle()
-			end
-
-			vim.api.nvim_create_user_command("NpmRunDev", toggle, { bang = true })
-			-- terminal node dev
-			vim.keymap.set("n", "<leader>tnd", toggle)
-			vim.keymap.set("t", "<leader>tnd", toggle)
-
 			-- REPL: 코드 실행
 			local runners = { javascript = "node" }
 
@@ -55,6 +37,10 @@ return {
 			local fterm = require("FTerm")
 			local lazygit = fterm:new({
 				cmd = "lazygit",
+				dimensions = {
+					height = 0.9,
+					width = 0.9,
+				},
 			})
 
 			-- terminal git

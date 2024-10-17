@@ -13,16 +13,19 @@ return {
 				javascriptreact = { "prettierd", "prettier" },
 				typescriptreact = { "prettierd", "prettier", "stop_after_first" },
 				c = { "clang_format" },
-				haskell = { "hindent" },
+				haskell = { "ormolu" },
+				python = { "pycodestyle" },
 			},
 			-- format_on_save = {
 			-- 	timeout_ms = 500,
 			-- 	lsp_fallback = true,
 			-- },
 			lang_to_ext = {
-				bash = "sh",
+				bash = { "sh", "bash" },
 				typescript = { "ts", "tsx" },
 				javascript = { "js", "jsx" },
+				haskell = { "hs" },
+				python = { "py" },
 			},
 		},
 		config = function(_, opts)

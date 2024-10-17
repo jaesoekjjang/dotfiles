@@ -1,9 +1,5 @@
 local mapKey = require("utils.keyMapper").mapKey
 
--- Neotree
--- mapKey("<leader>e", ":Neotree toggle<cr>")
-mapKey("<leader>e", ":Neotree toggle=true reveal=true<cr>")
-
 --save
 mapKey("<C-s>", "<cmd>w<cr><esc>", { "i", "x", "n", "s" }, { desc = "Save file" })
 
@@ -25,9 +21,10 @@ mapKey("_", [[<cmd>horizontal resize -2<cr>]])
 
 -- buffer
 vim.api.nvim_create_user_command("Bd", function()
-	vim.cmd("bd") -- 현재 버퍼를 닫음
-	vim.cmd("bd#") -- 이전 버퍼로 이동하여 닫음
+	vim.cmd("bp") -- 이전 버퍼로 이동
+	vim.cmd("bd#") -- 이전 버퍼 제거 닫음
 end, {})
+
 
 -- indent
 mapKey("<", "<gv", "v")

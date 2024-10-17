@@ -52,7 +52,7 @@ return {
 					["<C-f>"] = cmp.mapping.scroll_docs(4),
 					["<C-Space>"] = cmp.mapping.complete(),
 					["<C-e>"] = cmp.mapping.abort(),
-					["<CR>"] = cmp.mapping.confirm({ select = true }), -- Accept currently selected item. Set `select` to `false` to only confirm explicitly selected items.
+					["<CR>"] = cmp.mapping.confirm({ select = false }), -- Accept currently selected item. Set `select` to `false` to only confirm explicitly selected items.
 					["<tab>"] = cmp.mapping.confirm({ select = true }), -- Accept currently selected item. Set `select` to `false` to only confirm explicitly selected items.
 					["<C-n>"] = cmp.mapping(
 						cmp.mapping.select_next_item({ behavior = cmp.SelectBehavior.Select }),
@@ -70,24 +70,18 @@ return {
 					{ name = "luasnip", max_item_count = 5 }, -- snippets
 					{ name = "path", max_item_count = 5 }, -- file system paths
 					{ name = "nvim_lua" },
-					-- { name = "vim-react-snippets" },
 					{ name = "buffer" }, -- text within current buffer
 				}),
 
 				sorting = {
 					priority_weight = 2,
 					comparators = {
-						deprioritize_snippet,
-						cmp.config.compare.exact,
+            deprioritize_snippet,
 						cmp.config.compare.offset,
-						cmp.config.compare.scopes,
+						cmp.config.compare.exact,
 						cmp.config.compare.score,
 						cmp.config.compare.recently_used,
-						cmp.config.compare.locality,
 						cmp.config.compare.kind,
-						cmp.config.compare.sort_text,
-						cmp.config.compare.length,
-						cmp.config.compare.order,
 					},
 				},
 
