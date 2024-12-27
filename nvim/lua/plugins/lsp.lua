@@ -13,13 +13,11 @@ return {
 				local masonlsp = require("mason-lspconfig")
 				local mason = require("mason")
 
-				-- diagnostic을 hover 메뉴에 표시
-				-- K를 누르면 hover에서 아래 또는 위로 이동할 수 있다.
 				vim.diagnostic.config({
 					virtual_text = false,
 					severity_sort = true,
 					float = {
-						source = "always",
+						source = true,
 					},
 				})
 
@@ -96,12 +94,16 @@ return {
 							diagnostics = {
 								globals = { "vim" },
 							},
+							workspace = {
+								library = vim.api.nvim_get_runtime_file("", true),
+								checkThirdParty = false,
+							},
 						},
 					},
 				})
 
 				-- typescript
-				lspconfig.tsserver.setup({
+				lspconfig.ts_ls.setup({
 					capabilities = capabilities,
 					settings = {
 						implicitProjectConfiguration = {
@@ -175,22 +177,6 @@ return {
 						},
 					},
 				})
-
-				-- lsp keymap
-				mapKey("gh", vim.lsp.buf.hover)
-				mapKey("gD", vim.lsp.buf.definition)
-				mapKey("gq", vim.lsp.buf.code_action)
-
-				mapKey("gd", "<cmd>Telescope lsp_definitions<cr>")
-				mapKey("gtd", "<cmd>Telescope lsp_type_definitions<cr>")
-				mapKey("gi", "<cmd>Telescope lsp_implementations<cr>")
-				mapKey("gr", "<cmd>Telescope lsp_references<cr>")
-
-				mapKey("gl", vim.diagnostic.open_float)
-				mapKey("[d", vim.diagnostic.goto_prev)
-				mapKey("]d", vim.diagnostic.goto_next)
-
-				mapKey("gv", "<cmd>vsplit<cr>gd")
 			end,
 		},
 	},

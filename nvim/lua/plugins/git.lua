@@ -1,27 +1,45 @@
 local mapKey = require("utils.keyMapper").mapKey
 
+local lazygit_bufnr = -1
+
+local toggle_lazygit = function()
+	local cur_bufnr = vim.api.nvim_get_current_buf()
+
+	if cur_bufnr == lazygit_bufnr then
+		vim.cmd("b#")
+	else
+		if vim.api.nvim_buf_is_valid(lazygit_bufnr) and vim.fn.bufexists(lazygit_bufnr) then
+			vim.api.nvim_set_current_buf(lazygit_bufnr)
+		else
+			lazygit_bufnr = vim.api.nvim_create_buf(false, true)
+			vim.api.nvim_set_current_buf(lazygit_bufnr)
+			vim.cmd.terminal("lazygit")
+		end
+	end
+end
+
+mapKey("<leader>tg", toggle_lazygit, { "t", "n", "i" })
+
 return {
 	{
 		"tpope/vim-fugitive",
 		config = function()
-			mapKey("<space>g", ":vertical G<cr>")
+			mapKey("<space>gg", ":vert G<cr>")
 		end,
 	},
+
 	{
 		"junegunn/gv.vim",
 	},
+
 	{
-		"kdheepak/lazygit.nvim",
-		cmd = {
-			"LazyGit",
-			"LazyGitConfig",
-			"LazyGitCurrentFile",
-			"LazyGitFilter",
-			"LazyGitFilterCurrentFile",
-		},
-		-- optional for floating window border decoration
-		dependencies = {
-			"nvim-lua/plenary.nvim",
-		},
+		"idanarye/vim-merginal",
+		config = function()
+			mapKey("<space>gm", "<cmd>Merginal<cr>")
+			vim.g.merginal_windowWidth = (vim.api.nvim_win_get_width(0) / 2)
+		end,
 	},
+
+	-- lazy.nvim
+	{ "akinsho/git-conflict.nvim", version = "*", config = true },
 }

@@ -27,6 +27,11 @@ return {
 		--
 		-- require("ufo").setup({})
 		require("ufo").setup({
+			close_fold_kinds_for_ft = {
+				default = { "imports", "comment" },
+				json = { "array" },
+				c = { "comment", "region" },
+			},
 			provider_selector = function(bufnr, filetype, buftype)
 				return { "treesitter", "indent" }
 			end,
