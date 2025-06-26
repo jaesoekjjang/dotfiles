@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+
+source "$CONFIG_DIR/environment"
+source "$THEME_DIR/tokyonight"
+
+# Create individual category items
+sketchybar --add item cat_dev left \
+           --set cat_dev \
+                 icon="󰅴" \
+                 icon.font="$ICON_FONT" \
+                 icon.color="0xff565f89" \
+                 icon.padding_left=4 \
+                 icon.padding_right=2 \
+                 label="" \
+                 background.drawing=off
+
+sketchybar --add item cat_browser left \
+           --set cat_browser \
+                 icon="󰖟" \
+                 icon.font="$ICON_FONT" \
+                 icon.color="0xff565f89" \
+                 icon.padding_left=2 \
+                 icon.padding_right=2 \
+                 label="" \
+                 background.drawing=off
+
+sketchybar --add item cat_music left \
+           --set cat_music \
+                 icon="󰝚" \
+                 icon.font="$ICON_FONT" \
+                 icon.color="0xff565f89" \
+                 icon.padding_left=2 \
+                 icon.padding_right=2 \
+                 label="" \
+                 background.drawing=off
+
+sketchybar --add item cat_messenger left \
+           --set cat_messenger \
+                 icon="󰍩" \
+                 icon.font="$ICON_FONT" \
+                 icon.color="0xff565f89" \
+                 icon.padding_left=2 \
+                 icon.padding_right=2 \
+                 label="" \
+                 background.drawing=off
+
+sketchybar --add item cat_system left \
+           --set cat_system \
+                 icon="󰒓" \
+                 icon.font="$ICON_FONT" \
+                 icon.color="0xff565f89" \
+                 icon.padding_left=2 \
+                 icon.padding_right=8 \
+                 label="" \
+                 background.drawing=off
+
+# Subscribe all items to front_app_switched event with the same script
+sketchybar --subscribe cat_dev front_app_switched \
+           --subscribe cat_browser front_app_switched \
+           --subscribe cat_music front_app_switched \
+           --subscribe cat_messenger front_app_switched \
+           --subscribe cat_system front_app_switched \
+           --set cat_dev script="$PLUGIN_DIR/app_categories.sh" \
+           --set cat_browser script="$PLUGIN_DIR/app_categories.sh" \
+           --set cat_music script="$PLUGIN_DIR/app_categories.sh" \
+           --set cat_messenger script="$PLUGIN_DIR/app_categories.sh" \
+           --set cat_system script="$PLUGIN_DIR/app_categories.sh"

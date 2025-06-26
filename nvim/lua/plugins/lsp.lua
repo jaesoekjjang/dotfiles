@@ -39,12 +39,11 @@ return {
 						"html",
 						"cssls",
 						"jsonls",
-						"tsserver",
 						"eslint",
 						"graphql",
 						"tailwindcss",
 						"hls",
-						"python-lsp-server",
+						"ts_ls",
 					},
 					automatic_installation = true,
 				})
@@ -69,11 +68,11 @@ return {
 						"less",
 						"sass",
 						"typescript",
-						"scss",
-						"svelte",
-						"pug",
 						"typescriptreact",
 						"vue",
+						"scss",
+						"pug",
+						"ml",
 					},
 					init_options = {
 						html = {
@@ -107,10 +106,23 @@ return {
 					capabilities = capabilities,
 					settings = {
 						implicitProjectConfiguration = {
-							checkJs = true,
+							checkJs = false,
 						},
+						root_dir = function(fname)
+							return lspconfig.util.root_pattern("tsconfig.json", "jsconfig.json")(fname)
+						end,
 					},
 				})
+
+				lspconfig.flow.setup({
+					capabilities = capabilities,
+					settings = {
+						filetypes = { "*.js", "*.jsx", "*.ts", "*.tsx" },
+						root_dir = lspconfig.util.root_pattern(".flowconfig.js", "flow-typed", "package.json"),
+					},
+				})
+
+				lspconfig.vuels.setup({})
 
 				lspconfig.eslint.setup({
 					settings = {
@@ -145,12 +157,26 @@ return {
 
 				lspconfig.tailwindcss.setup({
 					settings = {
+						includeLanguages = {
+							typescript = "javascript",
+							typescriptreact = "javascript",
+						},
 						tailwindCSS = {
+							classFunctions = { "tw", "clsx", "tw\\.[a-z-]+", "classnames\\(([^)]*)\\)" },
 							experimental = {
 								classRegex = {
 									{ "cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]" },
 									{ "cx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)" },
 									"classnames\\(([^)]*)\\)",
+									-- Direct string assignment patterns
+									{ "\\w*[cC]lassName\\s*=\\s*[\"'`]([^\"'`]*)[\"'`]" },
+									{ "\\w*[cC]lassNames\\s*=\\s*[\"'`]([^\"'`]*)[\"'`]" },
+									-- Object property value patterns
+									{ "\\w*[cC]lassNames\\s*=\\s*{([^}]*)}", "[\"'`]([^\"'`]*)[\"'`]" },
+									{ "\\w*[cC]lassName\\s*:\\s*[\"'`]([^\"'`]*)[\"'`]" },
+									-- Generic object patterns
+									{ "\\w+\\s*=\\s*{([^}]*)}", "[\"'`]([^\"'`]*)[\"'`]" },
+									{ "\\w+\\s*:\\s*[\"'`]([^\"'`]*)[\"'`]" },
 								},
 							},
 						},
@@ -162,6 +188,9 @@ return {
 
 				-- haskell
 				lspconfig.hls.setup({})
+
+				-- ocaml
+				lspconfig.ocamllsp.setup({})
 
 				-- python
 				lspconfig.pylsp.setup({

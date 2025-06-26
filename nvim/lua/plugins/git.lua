@@ -13,6 +13,7 @@ local toggle_lazygit = function()
 		else
 			lazygit_bufnr = vim.api.nvim_create_buf(false, true)
 			vim.api.nvim_set_current_buf(lazygit_bufnr)
+      vim.cmd('wincmd o')
 			vim.cmd.terminal("lazygit")
 		end
 	end
@@ -35,11 +36,10 @@ return {
 	{
 		"idanarye/vim-merginal",
 		config = function()
-			mapKey("<space>gm", "<cmd>Merginal<cr>")
-			vim.g.merginal_windowWidth = (vim.api.nvim_win_get_width(0) / 2)
+			mapKey("<space>gm", "<cmd>MerginalToggle<cr>")
+			vim.g.merginal_windowWidth = math.floor(vim.api.nvim_win_get_width(0) / 2)
 		end,
 	},
 
-	-- lazy.nvim
 	{ "akinsho/git-conflict.nvim", version = "*", config = true },
 }

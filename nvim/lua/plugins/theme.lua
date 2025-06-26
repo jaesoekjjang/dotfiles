@@ -23,37 +23,73 @@ return {
 	-- 	lazy = false,
 	-- 	priority = 1000,
 	-- },
+	-- {
+	-- 	"cdmill/neomodern.nvim",
+	-- 	commit = "2e80b10e13bba981fa011551ded8ee59985ec30d", --coffeecat 바뀌기 전 마지막 커밋
+	-- 	lazy = false,
+	-- 	priority = 1000,
+	-- 	config = function()
+	-- 		require("neomodern").setup({
+	-- 			variant = "light",
+	-- 			style = "iceclimber", -- choose between 'iceclimber', 'coffeecat', 'darkforest', 'campfire', 'roseprime', 'daylight'
+	-- 		})
+	-- 		require("neomodern").load()
+	-- 		vim.cmd("colorscheme iceclimber")
+	-- 	end,
+	-- },
 	{
-		"cdmill/neomodern.nvim",
+		"rebelot/kanagawa.nvim",
 		lazy = false,
 		priority = 1000,
 		config = function()
-			require("neomodern").setup({
-				style = "coffeecat", -- choose between 'iceclimber', 'coffeecat', 'darkforest', 'campfire', 'roseprime', 'daylight'
+			require("kanagawa").setup({
+				compile = false, -- enable compiling the colorscheme
+				undercurl = true, -- enable undercurls
+				commentStyle = { italic = true },
+				functionStyle = {},
+				keywordStyle = { italic = true },
+				statementStyle = { bold = true },
+				typeStyle = {},
+				transparent = false, -- do not set background color
+				dimInactive = false, -- dim inactive window `:h hl-NormalNC`
+				terminalColors = true, -- define vim.g.terminal_color_{0,17}
+				colors = { -- add/modify theme and palette colors
+					palette = {},
+					theme = {
+						wave = {},
+						lotus = {},
+						dragon = {},
+						all = {
+							ui = {
+								bg_gutter = "none",
+							},
+						},
+					},
+				},
+				overrides = function(colors) -- add/modify highlights
+					return {}
+				end,
+				theme = "wave", -- Load "wave" theme
+				background = { -- map the value of 'background' option to a theme
+					dark = "wave", -- try "dragon" !
+					light = "lotus",
+				},
 			})
-			require("neomodern").load()
-      vim.cmd("colorscheme coffeecat")
+
+			vim.cmd("colorscheme kanagawa")
 		end,
 	},
-	-- {
-	-- 	"slugbyte/lackluster.nvim",
-	-- 	lazy = false,
-	-- 	priority = 1000,
-	--    config = function()
-	--      vim.cmd.colorscheme("lackluster-night")
-	--    end
-	-- },
 	{
 		"nvim-lualine/lualine.nvim",
 		dependencies = { "nvim-tree/nvim-web-devicons" },
 		config = function()
 			require("lualine").setup({
 				options = {
-					theme = "neomodern",
+					theme = "kanagawa",
 				},
 				sections = {
 					lualine_a = { "mode" },
-					lualine_b = { "branch", "diff", "diagnostics" },
+					lualine_b = { "branch", "diagnostics" },
 					lualine_c = { "filename" },
 					lualine_x = { "encoding", "filetype" },
 					lualine_y = { "progress", "location" },

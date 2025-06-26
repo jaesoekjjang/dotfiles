@@ -24,10 +24,10 @@ vim.g.maplocalleader = "\\"
 require("config.globals")
 require("config.keymaps")
 require("config.options")
+require("config.cmd")
 
 -- Setup lazy.nvim
 local plugins = "plugins" --plugins에 있는 모든 플러그인 파일 로드"
 local opts = {}
 
 require("lazy").setup(plugins, opts)
-

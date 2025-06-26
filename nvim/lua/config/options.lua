@@ -28,3 +28,7 @@ opt.encoding = "UTF-8"
 opt.cmdheight = 1
 opt.scrolloff = 10
 opt.mouse:append("a")
+opt.clipboard = "unnamedplus"
+
+opt.makeprg = "npx eslint ."
+opt.completeopt = "menuone,popup,noselect"

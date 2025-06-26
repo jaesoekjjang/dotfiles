@@ -66,6 +66,7 @@ return {
 				-- autocompletion sources
 				sources = cmp.config.sources({
 					-- { name = "cmp-nvim-lsp-signature-help" }, -- lsp
+					{ name = "copilot" }, -- lsp
 					{ name = "nvim_lsp", max_item_count = 50 }, -- lsp
 					{ name = "luasnip", max_item_count = 5 }, -- snippets
 					{ name = "path", max_item_count = 5 }, -- file system paths
@@ -76,7 +77,7 @@ return {
 				sorting = {
 					priority_weight = 2,
 					comparators = {
-            deprioritize_snippet,
+						deprioritize_snippet,
 						cmp.config.compare.offset,
 						cmp.config.compare.exact,
 						cmp.config.compare.score,

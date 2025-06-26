@@ -19,11 +19,12 @@ return {
 					"tsx",
 					"haskell",
 					"c",
-          "python"
+					"python",
 				},
 				sync_install = false,
 				highlight = { enable = true },
 				indent = { enable = true },
+				ignore_install = {},
 			})
 
 			require("rainbow-delimiters.setup").setup({

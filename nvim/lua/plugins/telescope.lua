@@ -1,5 +1,21 @@
 local mapKey = require("utils.keyMapper").mapKey
 
+local make_prg_tbl = {
+	eslint = {
+		prg = "npx eslint . --format unix",
+		fmt = "",
+	},
+	tsc = {
+		prg = "tsc --noEmit src/*.{ts,tsx}",
+		fmt = "errorformat=%f(%l,%c): error %m",
+	},
+}
+
+local make_prg_keys = {}
+for key, _ in pairs(make_prg_tbl) do
+	table.insert(make_prg_keys, key)
+end
+
 return {
 	{
 		"nvim-telescope/telescope.nvim",
@@ -24,9 +40,22 @@ return {
 			local live_grep_args_shortcuts = require("telescope-live-grep-args.shortcuts")
 
 			mapKey("<leader>ff", function()
-				builtin.find_files({ layout_config = {
-					bottom_pane = { height = 0.5 },
-				} })
+				builtin.find_files({
+					layout_config = {
+						bottom_pane = { height = 0.5 },
+					},
+					-- attach_mappings = function(file_name, map)
+					-- 	-- get directory of current file and open directory with Oil
+					-- 	local open_dir_with_oil = function()
+					-- 		local oil = require("oil")
+					-- 		oil.open(current_dir)
+					-- 	end
+					--
+					-- 	map({ "n", "i" }, "<C-e>", open_dir_with_oil)
+					--
+					-- 	return true
+					-- end,
+				})
 			end)
 
 			mapKey("<leader>fg", telescope.extensions.live_grep_args.live_grep_args, "n")
@@ -59,13 +88,22 @@ return {
 			mapKey("<leader>gc", builtin.git_commits)
 			mapKey("<leader>gb", builtin.git_branches)
 			mapKey("<leader>gs", builtin.git_stash)
-
 			mapKey("<leader>ch", builtin.quickfixhistory)
 
-			mapKey("gd", "<cmd>Telescope lsp_definitions<cr>")
-			mapKey("gtd", "<cmd>Telescope lsp_type_definitions<cr>")
-			mapKey("gi", "<cmd>Telescope lsp_implementations<cr>")
-			mapKey("gr", "<cmd>Telescope lsp_references<cr>")
+			mapKey("gd", builtin.lsp_definitions)
+			mapKey("gvd", function()
+				vim.cmd("vs")
+				builtin.lsp_definitions()
+			end)
+			mapKey("gtd", builtin.lsp_type_definitions)
+			mapKey("grr", builtin.lsp_references)
+			mapKey("gi", builtin.lsp_implementations)
+			mapKey("gs", builtin.spell_suggest)
+			mapKey("<leader>dd", function()
+				builtin.diagnostics({ bufnr = 0 })
+			end)
+			mapKey("<leader>dD", builtin.diagnostics)
+			mapKey("<leader>ds", builtin.lsp_document_symbols)
 
 			local copy_selection = function()
 				local selection = require("telescope.actions.state").get_selected_entry()
@@ -118,20 +156,56 @@ return {
 							n = {
 								["<C-d>"] = require("telescope.actions").delete_buffer,
 							},
+							make_prg_keys,
 						},
-					},
-					fzf = {
-						fuzzy = true, -- false will only do exact matching
-						override_generic_sorter = true, -- override the generic sorter
-						override_file_sorter = true, -- override the file sorter
-						case_mode = "smart_case", -- or "ignore_case" or "respect_case"
+						fzf = {
+							fuzzy = true, -- false will only do exact matching
+							override_generic_sorter = true, -- override the generic sorter
+							override_file_sorter = true, -- override the file sorter
+							case_mode = "smart_case", -- or "ignore_case" or "respect_case"
+						},
 					},
 				},
 			})
 
 			telescope.load_extension("ui-select")
-			-- telescope.load_extension("live_grep_args")
 			telescope.load_extension("fzf")
+
+			-- custom pickers
+
+			local pickers = require("telescope.pickers")
+			local finders = require("telescope.finders")
+			local conf = require("telescope.config").values
+
+			local make = function(opts)
+				opts = opts or {}
+				pickers
+					.new(opts, {
+						prompt_title = "Make",
+						finder = finders.new_table({
+							results = make_prg_keys,
+						}),
+						sorter = conf.generic_sorter(opts),
+					})
+					:find()
+			end
+
+			vim.keymap.set("n", "<leader>mp", function()
+				make(require("telescope.themes").get_dropdown({
+					attach_mappings = function(prompt_bufnr, map)
+						actions.select_default:replace(function()
+							actions.close(prompt_bufnr)
+							local make_tbl = make_prg_tbl[action_state.get_selected_entry()[1]]
+
+							vim.opt_local.makeprg = make_tbl["prg"]
+							vim.opt_local.errorformat = make_tbl["fmt"]
+						end)
+
+						return true
+					end,
+				}))
+			end)
 		end,
 	},
 }
+

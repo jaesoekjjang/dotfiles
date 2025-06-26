@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+source "$CONFIG_DIR/environment"
+source "$THEME_DIR/tokyonight"
+
+sketchybar --add item calendar right \
+           --set calendar \
+                 icon.font="$ICON_FONT" \
+                 icon.color="$magenta" \
+                 icon.padding_left=8 \
+                 icon.padding_right=4 \
+                 label.color="$magenta" \
+                 label.padding_left=0 \
+                 label.padding_right=8 \
+                 background.drawing=off \
+                 update_freq=60 \
+                 script="$PLUGIN_DIR/calendar.sh"
