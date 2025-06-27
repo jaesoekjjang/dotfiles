@@ -3,37 +3,32 @@
 source "$CONFIG_DIR/environment"
 source "$THEME_DIR/tokyonight"
 
-create_workspace_bracket_for_monitor() {
-  parameters=("$@")
-  monitor_id=${parameters[0]}
-  monitor_workspaces=("${parameters[@]:1}")
-  
-  if [ $monitor_id -eq 1 ]; then
-    sketchybar --add item workspaces_spacer_center center \
-               --set      workspaces_spacer_center \
-                          width=4 \
-                          background.drawing=off \
-                          label.drawing=off
-  fi
-  
-  for workspace_id in ${monitor_workspaces[@]}; do
-    sketchybar --add item  workspaces."$monitor_id"."$workspace_id" center \
-                          --subscribe workspaces."$monitor_id"."$workspace_id" aerospace_workspace_change \
-                          --set       workspaces."$monitor_id"."$workspace_id" \
-                                      background.drawing=off \
-                                      click_script="aerospace workspace $workspace_id" \
-                                      label="$workspace_id" \
-                                      label.width="25" \
-                                      script="$PLUGIN_DIR/aerospace $workspace_id"
-  done
-}
+# Define all workspaces from aerospace config
+IFS=$'\n' WORKSPACES=($(aerospace list-workspaces --monitor all --empty no))
 
-sketchybar --add event aerospace_workspace_change
-sketchybar --add event aerospace_service_mode_enabled_changed
+# Create workspace items
+for workspace in "${WORKSPACES[@]}"; do
+    sketchybar --add item "aerospace.$workspace" left \
+               --set "aerospace.$workspace" \
+                     icon="" \
+                     icon.font="$ICON_BASE_FONT:Bold:13.0" \
+                     icon.color="$white" \
+                     icon.padding_left=6 \
+                     icon.y_offset=0 \
+                     icon.font_size=12 \
+                     label="" \
+                     label.padding_right=9 \
+                     label.padding_left=8 \
+                     label.y_offset=-1 \
+                     background.drawing=off \
+                     background.padding_right=10 \
+                     background.height=23 \
+                     background.corner_radius=23 \
+                     script="$PLUGIN_DIR/aerospace.sh" \
+                     click_script="aerospace workspace $workspace"
 
-monitor_ids=($(aerospace list-monitors | awk '{print $1}'))
+    sketchybar --subscribe "aerospace.$workspace" front_app_switched \
+         --subscribe "aerospace.$workspace" workspace_changed \
+         --subscribe "aerospace.$workspace" system_woke
 
-for monitor_id in ${monitor_ids[@]}; do
-  workspaces=($(aerospace list-workspaces --monitor $monitor_id --empty no))
-  create_workspace_bracket_for_monitor $monitor_id ${workspaces[@]}
 done

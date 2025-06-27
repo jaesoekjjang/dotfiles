@@ -37,12 +37,11 @@ default=(
 sketchybar --default "${default[@]}"
 
 # Left
-source "$ITEM_DIR/aerospace_dynamic"
-source "$ITEM_DIR/app_categories"
-source "$ITEM_DIR/front_app"
+source "$ITEM_DIR/aerospace"
+# source "$ITEM_DIR/app_categories"
+# source "$ITEM_DIR/front_app"
 
 # Center
-# source "$ITEM_DIR/aerospace"
 
 # Right
 source "$ITEM_DIR/calendar"
@@ -55,5 +54,6 @@ sketchybar --update
 
 sketchybar --hotload true
 
-# Initialize focused workspace
+# Initialize workspace items and trigger workspace change
+sketchybar --add event aerospace_workspace_change
 sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused)

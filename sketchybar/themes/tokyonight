@@ -13,6 +13,7 @@ red="0xfff7768d"
 transparent="0x06000000"
 white="0xffa9b1d6"
 yellow="0xffe0af68"
+gray="0xff80848F"
 
 # Bar
 ## Colors
@@ -34,7 +35,7 @@ BACKGROUND_COLOR="$blue1"
 BACKGROUND_BORDER_COLOR="$blue"
 BACKGROUND_BORDER_WIDTH=0
 LABEL_ALIGN="center"
-LABEL_COLOR="$blue"
+LABEL_COLOR="$white"
 LABEL_HIGHLIGHT_COLOR="$red"
 
 ## Fonts
@@ -42,7 +43,7 @@ ICON_BASE_FONT="Hack Nerd Font"
 ICON_FONT="$ICON_BASE_FONT:Bold:17.0"
 APP_ICON_FONT="sketchybar-app-font:Regular:16.0"
 LABEL_BASE_FONT="Hack Nerd Font"
-LABEL_FONT="$LABEL_BASE_FONT:Regular:14.0"
+LABEL_FONT="$LABEL_BASE_FONT:Regular:13.0"
 LABEL_HIGHLIGHT_FONT="$LABEL_BASE_FONT:ExtraBold:14.0"
 
 ## Geometry

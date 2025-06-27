@@ -6,10 +6,10 @@ source "$THEME_DIR/tokyonight"
 sketchybar --add item battery right \
            --set battery \
                  icon.font="$ICON_FONT" \
-                 icon.color="$magenta" \
+                 icon.color="$cyan" \
                  icon.padding_left=8 \
                  icon.padding_right=4 \
-                 label.color="$magenta" \
+                 label.color="$cyan" \
                  label.padding_left=0 \
                  label.padding_right=8 \
                  background.drawing=off \
