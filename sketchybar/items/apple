@@ -1,0 +1,65 @@
+#!/bin/bash
+
+source "$CONFIG_DIR/environment"
+source "$THEME_DIR/tokyonight"
+
+POPUP_OFF="sketchybar --set apple.logo popup.drawing=off"
+POPUP_CLICK_SCRIPT="sketchybar --set \$NAME popup.drawing=toggle"
+
+apple_logo=(
+  icon=""
+  background.drawing=off
+  click_script="$POPUP_CLICK_SCRIPT"
+)
+
+apple_about_this_mac=(
+  label="이 맥에 관하여"
+  background.drawing=off
+  label.font="$POPUP_LABEL_FONT"
+  label.color="$POPUP_LABEL_COLOR"
+  script="$PLUGIN_DIR/apple.sh"
+  click_script="open -a 'About This Mac'; $POPUP_OFF"
+)
+
+apple_prefs=(
+  label="시스템 설정"
+  background.drawing=off
+  label.font="$POPUP_LABEL_FONT"
+  label.color="$POPUP_LABEL_COLOR"
+  script="$PLUGIN_DIR/apple.sh"
+  click_script="open -a 'System Preferences'; $POPUP_OFF"
+)
+
+apple_activity=(
+  label="활성 상태"
+  background.drawing=off
+  label.font="$POPUP_LABEL_FONT"
+  label.color="$POPUP_LABEL_COLOR"
+  script="$PLUGIN_DIR/apple.sh"
+  click_script="open -a 'Activity Monitor'; $POPUP_OFF"
+)
+
+apple_lock=(
+  label="잠금 화면"
+  background.drawing=off
+  label.font="$POPUP_LABEL_FONT"
+  label.color="$POPUP_LABEL_COLOR"
+  script="$PLUGIN_DIR/apple.sh"
+  click_script="pmset displaysleepnow; $POPUP_OFF"
+)
+
+
+sketchybar --add item apple.logo left                  \
+           --set apple.logo "${apple_logo[@]}"         \
+                                                       \
+           --add item apple.about popup.apple.logo     \
+           --set apple.about "${apple_about_this_mac[@]}"       \
+                                                       \
+           --add item apple.prefs popup.apple.logo     \
+           --set apple.prefs "${apple_prefs[@]}"       \
+                                                       \
+           --add item apple.activity popup.apple.logo  \
+           --set apple.activity "${apple_activity[@]}" \
+                                                       \
+           --add item apple.lock popup.apple.logo      \
+           --set apple.lock "${apple_lock[@]}"

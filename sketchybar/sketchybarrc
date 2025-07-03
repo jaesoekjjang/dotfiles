@@ -24,6 +24,12 @@ default=(
   background.border_color="$BACKGROUND_BORDER_COLOR"
   background.corner_radius="$BACKGROUND_CORNER_RADIUS"
   background.height="$BACKGROUND_HEIGHT"
+  popup.background.border_width="$POPUP_BORDER_WIDTH"
+  popup.background.border_color="$POPUP_BORDER_COLOR"
+  popup.background.corner_radius="$POPUP_CORNER_RADIUS"
+  popup.background.color="$POPUP_BACKGROUND_COLOR"
+  popup.background.padding_left="$POPUP_PADDING_X"
+  popup.background.padding_right="$POPUP_PADDING_X"
   icon.font="$ICON_FONT"
   label.align="$LABEL_ALIGN"
   label.font="$LABEL_FONT"
@@ -36,7 +42,11 @@ default=(
 )
 sketchybar --default "${default[@]}"
 
+# Initialize workspace items and trigger workspace change
+sketchybar --add event aerospace_workspace_change
+
 # Left
+source "$ITEM_DIR/apple"
 source "$ITEM_DIR/aerospace"
 # source "$ITEM_DIR/app_categories"
 # source "$ITEM_DIR/front_app"
@@ -51,9 +61,5 @@ source "$ITEM_DIR/volume"
 
 # Force all scripts to run the first time (never do this in a script)
 sketchybar --update
-
 sketchybar --hotload true
 
-# Initialize workspace items and trigger workspace change
-sketchybar --add event aerospace_workspace_change
-sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused)

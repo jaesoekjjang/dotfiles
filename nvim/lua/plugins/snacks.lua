@@ -20,8 +20,8 @@ return {
 		statuscolumn = { enabled = true },
 		words = { enabled = false },
 		win = {
-			width = 0.95,
-			height = 0.95,
+			width = 1,
+			height = 1,
 		},
 	},
 	keys = {
@@ -33,4 +33,15 @@ return {
 			desc = "Lazygit",
 		},
 	},
+	config = function()
+		vim.api.nvim_create_autocmd("TermOpen", {
+			pattern = "*",
+			callback = function()
+				local term_title = vim.b.term_title
+				if term_title and term_title:match("lazygit") then
+					vim.keymap.set("t", "<leader>gl", "<cmd>close<cr>", { buffer = true, desc = "Lazygit" })
+				end
+			end,
+		})
+	end,
 }

@@ -2,32 +2,28 @@
 
 source "$CONFIG_DIR/environment"
 source "$THEME_DIR/tokyonight"
-source "/Users/mac/Library/Mobile Documents/com~apple~CloudDocs/Dotfiles/sketchybar/helpers/icon_map.sh"
+source "$HELPER_DIR/icon_map.sh"
 
 # Get the current focused workspace
 FOCUSED_WORKSPACE=${FOCUSED_WORKSPACE:-$(aerospace list-workspaces --focused)}
 
-# Function to get app icon using existing icon map
 get_app_icon() {
     local app_name="$1"
     __icon_map "$app_name"
     echo "$icon_result"
 }
 
-# Function to get apps in a workspace  
 get_workspace_apps() {
     local workspace="$1"
     aerospace list-windows --workspace "$workspace" --format '%{app-name}' 2>/dev/null | head -3
 }
 
-# Function to check if workspace is visible/has apps
 workspace_has_apps() {
     local workspace="$1"
     local app_count=$(aerospace list-windows --workspace "$workspace" 2>/dev/null | wc -l)
     [[ $app_count -gt 0 ]]
 }
 
-# Function to update workspace item
 update_workspace_item() {
     local workspace="$1"
     local item_name="aerospace.$workspace"
@@ -38,10 +34,9 @@ update_workspace_item() {
     local border_color="$white"
     local border_width=0
     
-    # Style for focused workspace
     if [[ "$workspace" == "$FOCUSED_WORKSPACE" ]]; then
         icon=""
-        label_color="$white"
+        label_color="0xFFFEFEFE"
         border_color="$red"
         border_width=1
         bg_drawing="on"
@@ -51,7 +46,6 @@ update_workspace_item() {
         bg_drawing="off"
     fi
     
-    # Build app icons string (max 3 apps, only for workspaces with apps)
     local app_icons=""
     if [[ "$has_apps" == true ]]; then
         local apps=$(get_workspace_apps "$workspace")
@@ -67,7 +61,6 @@ update_workspace_item() {
         done <<< "$apps"
     fi
     
-    # Update the item
     sketchybar --set "$item_name" \
                icon="$icon" \
                icon.color="$icon_color" \
@@ -81,7 +74,6 @@ update_workspace_item() {
 
 }
 
-# Update all workspace items
 IFS=$'\n' WORKSPACES=($(aerospace list-workspaces --monitor all --empty no))
 
 for workspace in "${WORKSPACES[@]}"; do

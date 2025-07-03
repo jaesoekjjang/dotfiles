@@ -8,22 +8,22 @@ if [ "$PERCENTAGE" = "" ]; then
 fi
 
 case "${PERCENTAGE}" in
-  9[0-9]|100) ICON="󱟢" ;;
-  [6-8][0-9]) 
+  9[5-9]|100) ICON="󱟢" ;;
+  [8-9][0-9]) 
     if [[ "${CHARGING}" != "" ]]; then
       ICON="󱊦" 
     else
       ICON="󱊣"
     fi
   ;;
-  [3-5][0-9]) 
+  [5-7][0-9]) 
     if [[ "${CHARGING}" != "" ]]; then
       ICON="󱊥"
     else
       ICON="󱊢"
     fi
   ;;
-  [1-2][0-9]) 
+  [2-4][0-9]) 
     if [[ "${CHARGING}" != "" ]]; then
       ICON="󱊤"
     else
