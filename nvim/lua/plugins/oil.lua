@@ -57,7 +57,7 @@ return {
 			},
 		})
 
-		vim.keymap.set("n", "<leader>e", "<CMD>Oil<Cr>", { desc = "Open parent directory" })
+		vim.keymap.set("n", "<leader>ee", "<CMD>Oil<Cr>", { desc = "Open parent directory" })
 	end,
 }
 --float

@@ -277,6 +277,10 @@ automatically-unhide-macos-hidden-apps = true
 [[on-window-detected]]
   if.app-id = 'net.kovidgoyal.kitty'
   run = "move-node-to-workspace T"
+
+[[on-window-detected]]
+  if.app-id = 'com.microsoft.VSCode'
+  run = "move-node-to-workspace T"
 # terminal end
 
 # browser start
@@ -311,7 +315,7 @@ automatically-unhide-macos-hidden-apps = true
 
 [[on-window-detected]]
   if.app-id = 'com.kakao.KakaoTalkMac'
-  run = "move-node-to-workspace M"
+  run = ["layout floating", "move-node-to-workspace M" ]
 
 [[on-window-detected]]
   if.app-id = 'Mattermost.Desktop'
@@ -325,7 +329,7 @@ automatically-unhide-macos-hidden-apps = true
 # file explorer start
 [[on-window-detected]]
   if.app-id = 'com.apple.finder'
-  run = "move-node-to-workspace F"
+  run = ["layout floating", "move-node-to-workspace F" ]
 # file explorer end
 
 # ai start

@@ -44,6 +44,8 @@ return {
 						"tailwindcss",
 						"hls",
 						"ts_ls",
+            "gopls",
+            "marksman"
 					},
 					automatic_installation = true,
 				})
@@ -206,6 +208,12 @@ return {
 						},
 					},
 				})
+
+        lspconfig.marksman.setup({
+          capabilities = capabilities,
+          filetypes = { "markdown" },
+        })
+
 			end,
 		},
 	},

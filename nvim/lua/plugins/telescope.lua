@@ -28,6 +28,7 @@ return {
 				version = "^1.0.0",
 			},
 			{ "nvim-telescope/telescope-fzf-native.nvim", build = "make" },
+			{ "ThePrimeagen/git-worktree.nvim" },
 		},
 		config = function()
 			local telescope = require("telescope")
@@ -84,6 +85,8 @@ return {
 			mapKey("<leader>fh", builtin.help_tags)
 			mapKey("<leader>fm", builtin.marks)
 			mapKey("<leader>fo", builtin.oldfiles)
+			mapKey("<leader>sd", builtin.lsp_document_symbols)
+			mapKey("<leader>sw", builtin.lsp_workspace_symbols)
 
 			mapKey("<leader>gc", builtin.git_commits)
 			mapKey("<leader>gb", builtin.git_branches)
@@ -103,7 +106,9 @@ return {
 				builtin.diagnostics({ bufnr = 0 })
 			end)
 			mapKey("<leader>dD", builtin.diagnostics)
-			mapKey("<leader>ds", builtin.lsp_document_symbols)
+
+			mapKey("<leader>gw", "<CMD>lua require('telescope').extensions.git_worktree.git_worktree()<CR>", "n")
+			mapKey("<leader>gW", "<CMD>lua require('telescope').extensions.git_worktree.create_git_worktree()<CR>", "n")
 
 			local copy_selection = function()
 				local selection = require("telescope.actions.state").get_selected_entry()
@@ -170,6 +175,7 @@ return {
 
 			telescope.load_extension("ui-select")
 			telescope.load_extension("fzf")
+			telescope.load_extension("git_worktree")
 
 			-- custom pickers
 
@@ -208,4 +214,3 @@ return {
 		end,
 	},
 }
-
