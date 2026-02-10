@@ -9,6 +9,13 @@ mapKey("<S-c>", "cc")
 mapKey("du", '"_d')
 mapKey("c", '"_c')
 
+-- motion
+-- most left, most right
+mapKey("H", "^")
+mapKey("L", "$")
+-- pair jump
+mapKey(",", "%")
+
 -- toggle hls, number
 mapKey("<F3>", "<cmd>set hlsearch!<cr>")
 mapKey("<F4>", "<cmd>set number! relativenumber!<cr>")

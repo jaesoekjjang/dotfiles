@@ -21,13 +21,30 @@ vim.opt.rtp:prepend(lazypath)
 vim.g.mapleader = " "
 vim.g.maplocalleader = "\\"
 
+-- VSCode 환경 감지
+local is_vscode = vim.g.vscode ~= nil
+
 require("config.globals")
-require("config.keymaps")
-require("config.options")
-require("config.cmd")
+
+-- 환경별 설정 로드
+if not is_vscode then
+	require("config.keymaps")
+	require("config.options")
+	require("config.cmd")
+else
+	-- VSCode 전용 설정
+	require("config.options-vscode")
+	require("config.keymaps-vscode")
+	vim.highlight.on_yank({ higroup = "Search" })
+end
 
 -- Setup lazy.nvim
-local plugins = "plugins" --plugins에 있는 모든 플러그인 파일 로드"
 local opts = {}
 
-require("lazy").setup(plugins, opts)
+-- VSCode 환경이 아닐 때는 plugins 디렉토리 로드
+if not is_vscode then
+	require("lazy").setup("plugins", opts)
+else
+	-- VSCode에서는 최소한의 플러그인만 로드
+	require("lazy").setup("plugins-vscode", opts)
+end

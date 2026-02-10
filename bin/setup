@@ -1,0 +1,5 @@
+#!/bin/zsh -l
+
+set -eo pipefail
+
+exec "$DOTFILES/setup.zsh"

@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": ["Pnpm", "Mv", "Cd", "Npm", "Mkdir", "Gh", "Wrangler"]
+  },
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "afplay /System/Library/Sounds/Funk.aiff"
+          }
+        ]
+      }
+    ]
+  },
+  "alwaysThinkingEnabled": true
+}

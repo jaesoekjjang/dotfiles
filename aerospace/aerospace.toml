@@ -12,13 +12,13 @@ after-login-command = []
 #   'exec-and-forget borders active_color=0xff6b9dff inactive_color=0x444444ff width=3.0'
 # ]
 after-startup-command = [
-  'exec-and-forget borders active_color=0xff7dcfff inactive_color=0x00000000 width=2.5',
-  'exec-and-forget sketchybar'
+  'exec-and-forget borders active_color=0xff7dcfff inactive_color=0x00000000 width=2.5'
+  # 'exec-and-forget sketchybar'
 ]
 
-exec-on-workspace-change = ['/bin/bash', '-c',
-    'sketchybar --trigger aerospace_workspace_change FOCUSED=$AEROSPACE_FOCUSED_WORKSPACE'
-]
+# exec-on-workspace-change = ['/bin/bash', '-c',
+#     'sketchybar --trigger aerospace_workspace_change FOCUSED=$AEROSPACE_FOCUSED_WORKSPACE'
+# ]
 
 # Start AeroSpace at login
 start-at-login = true
@@ -70,11 +70,11 @@ automatically-unhide-macos-hidden-apps = true
     inner.vertical =   14
     outer.left =       14
     outer.bottom =     14
-    outer.top = [{ monitor.main = 18 }, 48]
+    outer.top = 8
     outer.right =      14
 
 [mode.main.binding]
-    alt-space = 'mode alt'
+    # alt-space = 'mode alt'
     alt-esc = 'mode service'
 
     alt-slash = 'layout tiles horizontal vertical'
@@ -159,7 +159,7 @@ automatically-unhide-macos-hidden-apps = true
     alt-equal = 'resize smart +50'
 
 [mode.alt.binding]
-    alt-space = 'mode alt'
+    # alt-space = 'mode alt'
     esc = 'mode main'
 
     slash = 'layout tiles horizontal vertical'
@@ -281,6 +281,11 @@ automatically-unhide-macos-hidden-apps = true
 [[on-window-detected]]
   if.app-id = 'com.microsoft.VSCode'
   run = "move-node-to-workspace T"
+
+[[on-window-detected]]
+  if.app-id = 'com.todesktop.230313mzl4w4u92'
+  run = "move-node-to-workspace T"
+
 # terminal end
 
 # browser start
@@ -341,5 +346,5 @@ automatically-unhide-macos-hidden-apps = true
 # ETC start
 [[on-window-detected]]
   if.app-id = 'com.imagestudiopro.ScreenBrush'
-  run = "move-node-to-workspace E"
+  run = ["layout floating"]
 # ETC end

@@ -1,0 +1,15 @@
+[core]
+	eol = native
+	ignorecase = false
+	pager = delta
+	editor = nvim
+[init]
+	defaultBranch = main
+[http]
+	sslVerify = false
+[delta]
+	side-by-side = true
+[fetch]
+	prune = true
+[rebase]
+	updateRefs = true
