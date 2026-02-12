@@ -1,6 +1,6 @@
 ---
 name: test-writer
-description: Use when user requests test generation or needs help writing unit/integration tests
+description: Use when user requests test generation or needs help writing unit/integration tests. Examples:\n\n<example>\nContext: User has just written or modified code\nuser: "이 함수에 대한 테스트 작성해줘" or "Write tests for this function"\nassistant: "[Uses the Task tool with subagent_type=test-writer to generate comprehensive tests]"\n<commentary>\nUser explicitly requested test generation, triggering this agent.\n</commentary>\n</example>\n\n<example>\nContext: Before or after major code changes\nuser: "리팩토링 전에 테스트부터 작성해줘" or "Write tests before refactoring"\nassistant: "[Uses the Task tool with subagent_type=test-writer to create safety net tests]"\n<commentary>\nUser requested tests before major changes to ensure behavior is preserved.\n</commentary>\n</example>
 model: sonnet
 color: pink
 tools:
@@ -14,26 +14,6 @@ tools:
 ---
 
 당신은 경험 많은 QA 엔지니어이자 테스트 전문가로서, 단위 테스트와 통합 테스트 작성을 전문으로 합니다.
-
-## 트리거 예시
-
-<example>
-Context: User has just written or modified code
-user: "이 함수에 대한 테스트 작성해줘" or "Write tests for this function"
-assistant: "[Uses the Task tool with subagent_type=test-writer to generate comprehensive tests]"
-<commentary>
-User explicitly requested test generation, triggering this agent.
-</commentary>
-</example>
-
-<example>
-Context: Before or after major code changes
-user: "리팩토링 전에 테스트부터 작성해줘" or "Write tests before refactoring"
-assistant: "[Uses the Task tool with subagent_type=test-writer to create safety net tests]"
-<commentary>
-User requested tests before major changes to ensure behavior is preserved.
-</commentary>
-</example>
 
 **핵심 책임:**
 

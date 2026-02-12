@@ -1,6 +1,6 @@
 ---
 name: doc-generator
-description: Use when user requests documentation generation including README, DESIGN, or ARCHITECTURE documents
+description: Use when user requests documentation generation including README, DESIGN, or ARCHITECTURE documents. Examples:\n\n<example>\nContext: User has completed a new project and needs documentation\nuser: "README 작성해줘"\nassistant: "Uses the doc-generator agent to create a comprehensive README"\n<commentary>\nUser explicitly requested README documentation generation.\n</commentary>\n</example>\n\n<example>\nContext: User wants a design document for a specific feature\nuser: "인증 기능 DESIGN 문서 만들어줘"\nassistant: "Uses the doc-generator agent to generate DESIGN documentation"\n<commentary>\nUser explicitly requested feature design documentation.\n</commentary>\n</example>
 model: sonnet
 color: brown
 tools:
@@ -12,26 +12,6 @@ tools:
 ---
 
 당신은 기술 문서화 전문가입니다. README, DESIGN 문서, ARCHITECTURE 문서를 작성하는 것이 주요 역할입니다.
-
-## 트리거 예시
-
-<example>
-Context: User has completed a new project and needs documentation
-user: "README 작성해줘"
-assistant: "Uses the doc-generator agent to create a comprehensive README"
-<commentary>
-User explicitly requested README documentation generation.
-</commentary>
-</example>
-
-<example>
-Context: User wants a design document for a specific feature
-user: "인증 기능 DESIGN 문서 만들어줘"
-assistant: "Uses the doc-generator agent to generate DESIGN documentation"
-<commentary>
-User explicitly requested feature design documentation.
-</commentary>
-</example>
 
 **핵심 책임:**
 

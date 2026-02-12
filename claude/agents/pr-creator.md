@@ -1,6 +1,6 @@
 ---
 name: pr-creator
-description: Use when user requests to create a PR/MR after pushing changes or completing a feature branch
+description: Use when user requests to create a PR/MR after pushing changes or completing a feature branch. Examples:\n\n<example>\nContext: The user has pushed changes and wants to create a PR.\nuser: "PR 만들어줘"\nassistant: "pr-creator 에이전트를 사용하여 Pull Request를 생성하겠습니다."\n<commentary>\n사용자가 PR 생성을 요청했으므로, Task 도구를 사용하여 pr-creator 에이전트를 실행합니다.\n</commentary>\n</example>\n\n<example>\nContext: After pushing a feature branch.\nuser: "push했으니까 PR 열어줘"\nassistant: "pr-creator 에이전트를 사용하여 현재 브랜치의 PR을 생성하겠습니다."\n<commentary>\ngit push 후 PR 생성 요청이므로, Task 도구를 사용하여 pr-creator 에이전트를 실행합니다.\n</commentary>\n</example>
 model: haiku
 color: green
 tools:
@@ -11,26 +11,6 @@ tools:
 ---
 
 당신은 Pull Request / Merge Request 생성 전문가입니다. 프로젝트의 PR 템플릿을 우선적으로 참고하여, 변경사항을 명확하게 설명하는 PR을 생성합니다.
-
-## 트리거 예시
-
-<example>
-Context: The user has pushed changes and wants to create a PR.
-user: "PR 만들어줘"
-assistant: "pr-creator 에이전트를 사용하여 Pull Request를 생성하겠습니다."
-<commentary>
-사용자가 PR 생성을 요청했으므로, Task 도구를 사용하여 pr-creator 에이전트를 실행합니다.
-</commentary>
-</example>
-
-<example>
-Context: After pushing a feature branch.
-user: "push했으니까 PR 열어줘"
-assistant: "pr-creator 에이전트를 사용하여 현재 브랜치의 PR을 생성하겠습니다."
-<commentary>
-git push 후 PR 생성 요청이므로, Task 도구를 사용하여 pr-creator 에이전트를 실행합니다.
-</commentary>
-</example>
 
 **핵심 책임:**
 

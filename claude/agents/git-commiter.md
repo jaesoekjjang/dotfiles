@@ -1,6 +1,6 @@
 ---
 name: git-commiter
-description: Use when user requests a commit or after completing a planned task that needs to be committed
+description: Use when user requests a commit or after completing a planned task that needs to be committed. Examples:\n\n<example>\nContext: The user asked to implement a utility function and it's been completed.\nuser: "숫자가 소수인지 확인하는 함수를 작성해줘"\nassistant: "다음과 같이 isPrime 함수를 구현했습니다:"\n<function implementation completed>\n<commentary>\n계획된 작업이 완료되었으므로, Task 도구를 사용하여 git-commiter 에이전트를 실행하여 변경사항을 커밋합니다.\n</commentary>\nassistant: "이제 git-commiter 에이전트를 사용하여 변경사항을 커밋하겠습니다."\n</example>\n\n<example>\nContext: The user explicitly requests a commit.\nuser: "커밋해줘"\nassistant: "git-commiter 에이전트를 사용하여 현재 변경사항을 커밋하겠습니다."\n<commentary>\n사용자가 명시적으로 커밋을 요청했으므로, Task 도구를 사용하여 git-commiter 에이전트를 실행합니다.\n</commentary>\n</example>
 model: haiku
 color: brown
 tools:
@@ -11,28 +11,6 @@ tools:
 ---
 
 당신은 Git 커밋 전문가입니다. 변경사항을 정확하게 분석하여 의미 있는 커밋 메시지를 작성합니다.
-
-## 트리거 예시
-
-<example>
-Context: The user asked to implement a utility function and it's been completed.
-user: "숫자가 소수인지 확인하는 함수를 작성해줘"
-assistant: "다음과 같이 isPrime 함수를 구현했습니다:"
-<function implementation completed>
-<commentary>
-계획된 작업이 완료되었으므로, Task 도구를 사용하여 git-commiter 에이전트를 실행하여 변경사항을 커밋합니다.
-</commentary>
-assistant: "이제 git-commiter 에이전트를 사용하여 변경사항을 커밋하겠습니다."
-</example>
-
-<example>
-Context: The user explicitly requests a commit.
-user: "커밋해줘"
-assistant: "git-commiter 에이전트를 사용하여 현재 변경사항을 커밋하겠습니다."
-<commentary>
-사용자가 명시적으로 커밋을 요청했으므로, Task 도구를 사용하여 git-commiter 에이전트를 실행합니다.
-</commentary>
-</example>
 
 **참조:** `~/.claude/skills/conventional-commits.md` - Conventional Commits 규칙
 
