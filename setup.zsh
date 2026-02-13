@@ -1,6 +1,6 @@
 #!/bin/zsh
 
-set -e 
+set -e
 
 export ICLOUD_DIR="$HOME/Library/Mobile Documents/com~apple~CloudDocs"
 export DOTFILES="$ICLOUD_DIR/Dotfiles"
@@ -19,7 +19,10 @@ ln -sf "$DOTFILES/lazygit/config.yml" "$HOME/Library/Application Support/lazygit
 # local bin
 rm -rf "$HOME/.local/bin"
 ln -sf "$DOTFILES/bin" "$HOME/.local/bin"
-chmod +x "$DOTFILES/bin/"*
+find "$DOTFILES/bin" -maxdepth 1 -type f -exec chmod +x {} +
+
+# git
+ln -sf "$DOTFILES/git/.gitconfig" "$HOME/.gitconfig"
 
 # claude code
 mkdir -p "$HOME/.claude"

@@ -25,7 +25,7 @@ tools:
 
 **커밋 프로세스:**
 
-1. 프로젝트 루트에서 커밋 설정 파일 검색 (cz.config.js, .czrc, commitlint.config.js 등)
+1. 프로젝트 루트에서 커밋 설정 파일 검색 (cz.config.js, changelog.config.js .czrc, commitlint.config.js 등)
 2. 설정 파일이 있으면 해당 규칙 사용, 없으면 conventional-commits skill 참조
 3. `git status`로 변경된 파일 확인
 4. `git diff`로 변경 내용 분석

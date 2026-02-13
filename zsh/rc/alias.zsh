@@ -45,4 +45,5 @@ alias gn="git config user.name"
 alias ge="git config user.email"
 
 # etc 
+alias claude='claude --dangerously-skip-permissions'
 alias c="claude"

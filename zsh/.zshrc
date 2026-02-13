@@ -23,7 +23,7 @@ plugins=(git
 )
 
 source $ZSH/oh-my-zsh.sh
-source $ICLOUD_DIR/dotfiles/zsh/rc/index.zsh
+source $DOTFILES/zsh/rc/index.zsh
 source <(fzf --zsh)
 
 export FZF_DEFAULT_COMMAND="rg --files --hidden --glob '!.git/*' --glob '!node_modules/*'"
@@ -47,15 +47,13 @@ ZSH_HIGHLIGHT_STYLES[comment]='fg=cyan,bold'
 #   - the correct directories to the PATH
 #   - auto-completion for the opam binary
 # This section can be safely removed at any time if needed.
-[[ ! -r '/Users/pepe/.opam/opam-init/init.zsh' ]] || source '/Users/pepe/.opam/opam-init/init.zsh' > /dev/null 2> /dev/null
+[[ ! -r "$HOME/.opam/opam-init/init.zsh" ]] || source "$HOME/.opam/opam-init/init.zsh" > /dev/null 2> /dev/null
 # END opam configuration
-eval # shellcheck shell=bash
-
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
 # pnpm
-export PNPM_HOME="/Users/pepe/Library/pnpm"
+export PNPM_HOME="$HOME/Library/pnpm"
 case ":$PATH:" in
   *":$PNPM_HOME:"*) ;;
   *) export PATH="$PNPM_HOME:$PATH" ;;
@@ -66,4 +64,3 @@ esac
 eval "$(fnm env --use-on-cd --shell zsh)" > /dev/null 2>&1
 export FNM_COREPACK_ENABLED=true
 
-export NODE_EXTRA_CA_CERTS=~/certs/gabia-root-ca.pem 

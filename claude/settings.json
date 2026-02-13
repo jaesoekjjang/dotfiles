@@ -1,7 +1,16 @@
 {
   "permissions": {
-    "allow": ["Pnpm", "Mv", "Cd", "Npm", "Mkdir", "Gh", "Wrangler"]
+    "allow": [
+      "Pnpm",
+      "Mv",
+      "Cd",
+      "Npm",
+      "Mkdir",
+      "Gh",
+      "Wrangler"
+    ]
   },
+  "model": "sonnet",
   "hooks": {
     "Notification": [
       {
@@ -14,6 +23,13 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true,
+    "sonatype-guide@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true
 }
