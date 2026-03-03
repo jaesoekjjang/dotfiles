@@ -5,7 +5,6 @@ alias md="mkdir"
 alias v="nvim"
 alias cat="bat"
 alias cd="z"
-alias lg="lazygit"
 alias zrc="${=EDITOR} ~/.zshrc"
 alias zshrc="${=EDITOR} ~/.zshrc"
 alias ssh_kitty="kitty +kitten ssh"
@@ -44,6 +43,9 @@ alias gcb="git checkout -b"
 alias gn="git config user.name"
 alias ge="git config user.email"
 
+# lazyworktree, lazygit
+alias lg="lazygit"
+alias lw="lazyworktree"
+
 # etc 
-alias claude='claude --dangerously-skip-permissions'
-alias c="claude"
+alias cc='claude --dangerously-skip-permissions'

@@ -1,4 +1,7 @@
 {
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
   "permissions": {
     "allow": [
       "Pnpm",
@@ -10,7 +13,6 @@
       "Wrangler"
     ]
   },
-  "model": "sonnet",
   "hooks": {
     "Notification": [
       {
@@ -29,7 +31,10 @@
     "code-review@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true,
     "feature-dev@claude-plugins-official": true,
-    "sonatype-guide@claude-plugins-official": true
+    "sonatype-guide@claude-plugins-official": true,
+    "ui-ux-pro-max@ui-ux-pro-max-skill": true
   },
-  "alwaysThinkingEnabled": true
+  "language": "한국어",
+  "alwaysThinkingEnabled": true,
+  "skipDangerousModePermissionPrompt": true
 }
