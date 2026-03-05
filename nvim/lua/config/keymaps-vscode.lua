@@ -362,7 +362,10 @@ mapKey("<leader>gg", [[<Cmd>call VSCodeNotify('fugitive.open')<CR>]], "n", { des
 -- mapKey("<leader>gl", [[<Cmd>call VSCodeNotify('workbench.view.extension.gitlensPanel')<CR>]], "n", { desc = "Open InspectView" })
 
 -- Oil (file explorer)
-mapKey("<leader>o", [[<Cmd>call VSCodeNotify('oil-code.open')<CR>]], "n", { desc = "Open oil" })
+-- mapKey("<leader>o", [[<Cmd>call VSCodeNotify('oil-code.open')<CR>]], "n", { desc = "Open oil" })
+
+-- Yazi (file explorer)
+mapKey("<leader>o", [[<Cmd>call VSCodeNotify('yazi-vscode.toggle')<CR>]], "n", { desc = "Open oil" })
 
 -- which key
 mapKey("<leader><leader>", [[<Cmd>call VSCodeNotify('whichkey.show')<CR>]], "n", { desc = "Show which-key" })

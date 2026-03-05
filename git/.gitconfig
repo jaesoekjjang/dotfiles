@@ -13,6 +13,5 @@
 	prune = true
 [rebase]
 	updateRefs = true
-[user]
-	name = jaesoekjjang
-	email = ljs981120@gmail.com
+[include]
+	path = ~/.gitconfig.local

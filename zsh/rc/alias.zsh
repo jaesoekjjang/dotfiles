@@ -47,5 +47,10 @@ alias ge="git config user.email"
 alias lg="lazygit"
 alias lw="lazyworktree"
 
-# etc 
+# yazi
+alias y="yazi"
+
+# etc, custom functions
 alias cc='claude --dangerously-skip-permissions'
+alias tp='tmux_project'
+alias e="$EDITOR"

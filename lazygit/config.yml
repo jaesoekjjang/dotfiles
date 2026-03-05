@@ -1,11 +1,9 @@
 os:
   editPreset: "nvim"
-
 git:
-  paging:
-    colorArg: always
-    pager: delta --dark --paging=never
-
+  pagers:
+    - colorArg: always
+      pager: delta --dark --paging=never
 customCommands:
   - key: "E"
     description: "Add empty commit"
@@ -16,7 +14,6 @@ customCommands:
       - type: "input"
         key: "Message"
         title: "Empty commit message"
-
   - key: "C"
     command: "cz c"
     description: "Commit with commitizen"

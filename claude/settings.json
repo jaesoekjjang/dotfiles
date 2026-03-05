@@ -27,12 +27,28 @@
     ]
   },
   "enabledPlugins": {
-    "frontend-design@claude-plugins-official": true,
-    "code-review@claude-plugins-official": true,
-    "typescript-lsp@claude-plugins-official": true,
-    "feature-dev@claude-plugins-official": true,
-    "sonatype-guide@claude-plugins-official": true,
-    "ui-ux-pro-max@ui-ux-pro-max-skill": true
+    "vtsls@claude-code-lsps": true,
+    "vscode-langservers@claude-code-lsps": true,
+    "code-review@claude-code-plugins": true,
+    "commit-commands@claude-code-plugins": true,
+    "explanatory-output-style@claude-code-plugins": true,
+    "feature-dev@claude-code-plugins": true,
+    "plugin-dev@claude-code-plugins": true,
+    "security-guidance@claude-code-plugins": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-code-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-code"
+      }
+    },
+    "claude-code-lsps": {
+      "source": {
+        "source": "github",
+        "repo": "Piebald-AI/claude-code-lsps"
+      }
+    }
   },
   "language": "한국어",
   "alwaysThinkingEnabled": true,

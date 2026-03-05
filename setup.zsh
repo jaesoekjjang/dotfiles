@@ -14,13 +14,20 @@ ln -sf "$DOTFILES/zsh/.zprofile" "$HOME/.zprofile"
 ln -sf "$DOTFILES/tmux/.tmux.conf" "$HOME/.tmux.conf"
 
 # lazygit
-mkdir -p "$HOME/.config/lazygit"
+mkdir -p "$HOME/Library/Application Support/lazygit"
 ln -sf "$DOTFILES/lazygit/config.yml" "$HOME/Library/Application Support/lazygit/config.yml"
 
+# yazi
+mkdir -p ~/.config/yazi
+for f in "$DOTFILES/yazi"/*.toml "$DOTFILES/yazi"/scripts "$DOTFILES/yazi"/flavors; do
+  ln -sf "$f" ~/.config/yazi/
+done
+
 # local bin
-rm -rf "$HOME/.local/bin"
-ln -sf "$DOTFILES/bin" "$HOME/.local/bin"
-find "$DOTFILES/bin" -maxdepth 1 -type f -exec chmod +x {} +
+mkdir -p "$HOME/.local/bin"
+for f in "$DOTFILES/bin"/*; do
+  [[ -f "$f" ]] && chmod +x "$f" && ln -sf "$f" "$HOME/.local/bin/"
+done
 
 # git
 ln -sf "$DOTFILES/git/.gitconfig" "$HOME/.gitconfig"
