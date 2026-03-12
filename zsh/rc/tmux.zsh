@@ -1,3 +1,18 @@
+tmux_monitor() {
+  emulate -L zsh
+  local session_name="monitor"
+
+  if tmux has-session -t "$session_name" 2>/dev/null; then
+    tmux attach-session -t "$session_name"
+    return
+  fi
+
+  tmux new-session -s "$session_name" -n nav -d -c "$HOME" 'yazi'
+  tmux new-window -t "$session_name" -n monitor -c "$HOME" 'btop'
+  tmux select-window -t "${session_name}:nav"
+  tmux attach-session -t "$session_name"
+}
+
 tmux_project() {
   emulate -L zsh
   local raw_name

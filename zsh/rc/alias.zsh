@@ -53,4 +53,5 @@ alias y="yazi"
 # etc, custom functions
 alias cc='claude --dangerously-skip-permissions'
 alias tp='tmux_project'
+alias tm='tmux_monitor'
 alias e="$EDITOR"

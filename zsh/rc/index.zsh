@@ -6,6 +6,6 @@ source "$ZSH_CONFIG_DIR/env.zsh"
 source "$ZSH_CONFIG_DIR/alias.zsh"
 source "$ZSH_CONFIG_DIR/search.zsh"
 source "$ZSH_CONFIG_DIR/bindkey.zsh"
-source "$ZSH_CONFIG_DIR/tmux_project.zsh"
+source "$ZSH_CONFIG_DIR/tmux.zsh"
 
 [[ -f ~/.secrets.zsh ]] && source ~/.secrets.zsh
