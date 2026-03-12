@@ -18,10 +18,11 @@ mkdir -p "$HOME/Library/Application Support/lazygit"
 ln -sf "$DOTFILES/lazygit/config.yml" "$HOME/Library/Application Support/lazygit/config.yml"
 
 # yazi
-mkdir -p ~/.config/yazi
-for f in "$DOTFILES/yazi"/*.toml "$DOTFILES/yazi"/scripts "$DOTFILES/yazi"/flavors; do
-  ln -sf "$f" ~/.config/yazi/
-done
+ln -sfn "$DOTFILES/yazi" ~/.config/yazi
+
+# ghostty
+mkdir -p ~/.config
+ln -sfn "$DOTFILES/ghostty" ~/.config/ghostty
 
 # local bin
 mkdir -p "$HOME/.local/bin"
