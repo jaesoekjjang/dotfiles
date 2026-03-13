@@ -1,8 +1,9 @@
 # Quick Terminal 설정
 
-keybind = global:ctrl+enter=toggle_quick_terminal
+keybind = global:ctrl+k=toggle_quick_terminal
 quick-terminal-position = center
 quick-terminal-screen = main
 quick-terminal-animation-duration = 0.15
-quick-terminal-size = 80%, 80%
+quick-terminal-size = 85%,85%
 quick-terminal-space-behavior = remain
+quit-after-last-window-closed = false

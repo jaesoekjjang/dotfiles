@@ -38,10 +38,10 @@ prepend_keymap = [
   #     Archive
   # ##################
 
-  { on = ["z", "z"], run = 'shell "7z a \"${@##*/}.zip\" \"$@\"" --confirm', desc = "Compress to zip" },
-  { on = ["z", "g"], run = 'shell "gzip -k \"$@\"" --confirm', desc = "Compress to gz" },
-  { on = ["z", "t"], run = 'shell "tar cf \"${@##*/}.tar\" \"$@\"" --confirm', desc = "Compress to tar" },
-  { on = ["z", "a"], run = 'shell "tar czf \"${@##*/}.tar.gz\" \"$@\"" --confirm', desc = "Compress to tar.gz" },
-  { on = ["z", "x"], run = 'shell "7z x \"$@\" -o." --confirm', desc = "Extract here" },
-  { on = ["z", "X"], run = 'shell "7z x \"$@\" -o\"${@%.*}\"" --confirm', desc = "Extract to folder" },
+  { on = ["z", "z"], run = 'shell --confirm "7z a archive.zip %*"', desc = "Compress zip" },
+  { on = ["z", "g"], run = 'shell --confirm "cd \"$(dirname \"$1\")\" && tar -czf archive.tar.gz $(for f in \"$@\"; do basename \"$f\"; done)" -- %*', desc = "Compress tar.gz" },
+  { on = ["z", "t"], run = 'shell --confirm "cd \"$(dirname \"$1\")\" && tar -cf archive.tar $(for f in \"$@\"; do basename \"$f\"; done)" -- %*', desc = "Compress tar" },
+  { on = ["z", "a"], run = 'shell --confirm "cd \"$(dirname \"$1\")\" && tar -czf archive.tar.gz $(for f in \"$@\"; do basename \"$f\"; done)" -- %*', desc = "Compress tar.gz" },
+  { on = ["z", "x"], run = 'shell --confirm "7z x %* -o." ', desc = "Extract here" },
+  { on = ["z", "X"], run = 'shell --confirm "7z x %* -o\"${1%.*}\""', desc = "Extract to folder" }
 ]
