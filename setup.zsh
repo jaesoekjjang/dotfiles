@@ -13,6 +13,10 @@ ln -sf "$DOTFILES/zsh/.zprofile" "$HOME/.zprofile"
 # tmux
 ln -sf "$DOTFILES/tmux/.tmux.conf" "$HOME/.tmux.conf"
 
+# workmux
+ln -sf "$DOTFILES/workmux/config.yaml" "$HOME/.config/workmux/config.yaml"
+
+
 # lazygit
 mkdir -p "$HOME/Library/Application Support/lazygit"
 ln -sf "$DOTFILES/lazygit/config.yml" "$HOME/Library/Application Support/lazygit/config.yml"

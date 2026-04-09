@@ -15,3 +15,5 @@
 	updateRefs = true
 [include]
 	path = ~/.gitconfig.local
+[coderabbit]
+	machineId = cli/71b768b4e6144782a5a0e22848c012de

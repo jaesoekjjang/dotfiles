@@ -1,0 +1,89 @@
+{
+  "id": "monokai-light-soft",
+  "name": "Monokai Light Soft",
+  "type": "light",
+  "author": "Custom",
+  "description": "Reduced glare + darker terminal",
+
+  "ui": {
+    "background": "#F2EFE7",
+    "foreground": "#3A3732",
+
+    "card": "#EAE6DD",
+    "cardForeground": "#3A3732",
+
+    "popover": "#EAE6DD",
+    "popoverForeground": "#3A3732",
+
+    "primary": "#7FB347",
+    "primaryForeground": "#FFFFFF",
+
+    "secondary": "#DDD7C9",
+    "secondaryForeground": "#3A3732",
+
+    "muted": "#E5E0D6",
+    "mutedForeground": "#746F63",
+
+    "accent": "#4C96A8",
+    "accentForeground": "#FFFFFF",
+
+    "tertiary": "#ECE8DF",
+    "tertiaryActive": "#DDD7C9",
+
+    "destructive": "#C94C4A",
+    "destructiveForeground": "#FFFFFF",
+
+    "border": "#CFC8B8",
+    "input": "#DDD7C9",
+    "ring": "#BEB7A6",
+
+    "sidebar": "#EAE6DD",
+    "sidebarForeground": "#3A3732",
+
+    "sidebarPrimary": "#E88B2E",
+    "sidebarPrimaryForeground": "#FFFFFF",
+
+    "sidebarAccent": "#DDD7C9",
+    "sidebarAccentForeground": "#3A3732",
+
+    "sidebarBorder": "#CFC8B8",
+    "sidebarRing": "#BEB7A6",
+
+    "chart1": "#E88B2E",
+    "chart2": "#7FB347",
+    "chart3": "#DFA24A",
+    "chart4": "#6B95B5",
+    "chart5": "#C94C4A",
+
+    "highlightMatch": "rgba(232, 139, 46, 0.18)",
+    "highlightActive": "rgba(232, 139, 46, 0.35)"
+  },
+
+  "terminal": {
+    "background": "#1E1D1A",
+    "foreground": "#E6E1D8",
+
+    "cursor": "#E88B2E",
+    "cursorAccent": "#1E1D1A",
+
+    "selectionBackground": "rgba(232, 139, 46, 0.25)",
+
+    "black": "#1E1D1A",
+    "red": "#D14B49",
+    "green": "#7FB347",
+    "yellow": "#E6A44C",
+    "blue": "#4C96A8",
+    "magenta": "#A66FB5",
+    "cyan": "#5DAAA3",
+    "white": "#E6E1D8",
+
+    "brightBlack": "#5F5A52",
+    "brightRed": "#E06A67",
+    "brightGreen": "#98C96A",
+    "brightYellow": "#F0B35C",
+    "brightBlue": "#6FAEC4",
+    "brightMagenta": "#B083C1",
+    "brightCyan": "#6FBFB7",
+    "brightWhite": "#FFFFFF"
+  }
+}

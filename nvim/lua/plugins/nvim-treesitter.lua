@@ -20,9 +20,16 @@ return {
 					"haskell",
 					"c",
 					"python",
+				"markdown",
+				"markdown_inline",
 				},
 				sync_install = false,
-				highlight = { enable = true },
+				highlight = {
+				enable = true,
+				disable = function(lang, buf)
+					return not pcall(vim.treesitter.get_parser, buf, lang)
+				end,
+			},
 				indent = { enable = true },
 				ignore_install = {},
 			})

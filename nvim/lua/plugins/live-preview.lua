@@ -1,8 +1,2 @@
-return {
-	"brianhuster/live-preview.nvim",
-	dependencies = {
-		"nvim-telescope/telescope.nvim",
-		"ibhagwan/fzf-lua",
-		"echasnovski/mini.pick",
-	},
-}
+-- live-preview는 render-markdown.lua에서 관리
+return {}

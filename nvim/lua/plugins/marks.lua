@@ -1,16 +1,4 @@
-return {
-	"chentoast/marks.nvim",
-	config = function()
-		require("marks").setup({
-			sign_priority = { bookmark = 0 },
-			mappings = {
-				preview = "m:",
-				delete_buf = "dm%",
-				delete_line = "dml",
-			},
-		})
-	end,
-}
+return {}
 
 -- mx              Set mark x
 --   m,              Set the next available alphabetical (lowercase) mark

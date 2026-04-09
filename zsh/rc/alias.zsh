@@ -43,15 +43,16 @@ alias gcb="git checkout -b"
 alias gn="git config user.name"
 alias ge="git config user.email"
 
-# lazyworktree, lazygit
+# lazyworktree, lazygit, workmux
 alias lg="lazygit"
 alias lw="lazyworktree"
+alias wm="workmux"
 
 # yazi
 alias y="yazi"
 
 # etc, custom functions
-alias cc='claude --dangerously-skip-permissions'
+alias cl='claude --dangerously-skip-permissions'
 alias tp='tmux_project'
 alias tm='tmux_monitor'
 alias e="$EDITOR"

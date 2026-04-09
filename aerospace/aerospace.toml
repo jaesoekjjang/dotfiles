@@ -286,7 +286,18 @@ automatically-unhide-macos-hidden-apps = true
   if.app-id = 'com.todesktop.230313mzl4w4u92'
   run = "move-node-to-workspace T"
 
+[[on-window-detected]]
+  if.app-id = 'com.superset.desktop'
+  run = "move-node-to-workspace T"
 # terminal end
+
+
+# project start
+[[on-window-detected]]
+  if.app-id = 'com.linear'
+  run = "move-node-to-workspace P"
+# project end
+
 
 # browser start
 [[on-window-detected]]
@@ -329,6 +340,11 @@ automatically-unhide-macos-hidden-apps = true
 [[on-window-detected]]
   if.app-id = 'com.hnc.Discord'
   run = "move-node-to-workspace M"
+
+[[on-window-detected]]
+  if.app-id = 'com.apple.ScreenContinuity'
+  run = "move-node-to-workspace M"
+
 # messenger end
 
 # file explorer start

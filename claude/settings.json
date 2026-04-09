@@ -13,6 +13,7 @@
       "Wrangler"
     ]
   },
+  "model": "sonnet",
   "hooks": {
     "Notification": [
       {
@@ -23,33 +24,161 @@
             "command": "afplay /System/Library/Sounds/Funk.aiff"
           }
         ]
+      },
+      {
+        "matcher": "permission_prompt|elicitation_dialog",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "workmux set-window-status waiting"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$SUPERSET_HOME_DIR\" ] && [ -x \"$SUPERSET_HOME_DIR/hooks/notify.sh\" ] && \"$SUPERSET_HOME_DIR/hooks/notify.sh\" || true"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$SUPERSET_HOME_DIR\" ] && [ -x \"$SUPERSET_HOME_DIR/hooks/notify.sh\" ] && \"$SUPERSET_HOME_DIR/hooks/notify.sh\" || true"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "workmux set-window-status working"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$SUPERSET_HOME_DIR\" ] && [ -x \"$SUPERSET_HOME_DIR/hooks/notify.sh\" ] && \"$SUPERSET_HOME_DIR/hooks/notify.sh\" || true"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$SUPERSET_HOME_DIR\" ] && [ -x \"$SUPERSET_HOME_DIR/hooks/notify.sh\" ] && \"$SUPERSET_HOME_DIR/hooks/notify.sh\" || true"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "workmux set-window-status done"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -n \"$SUPERSET_HOME_DIR\" ] && [ -x \"$SUPERSET_HOME_DIR/hooks/notify.sh\" ] && \"$SUPERSET_HOME_DIR/hooks/notify.sh\" || true"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "workmux set-window-status working"
+          }
+        ]
       }
     ]
   },
+  "statusLine": {
+    "type": "command",
+    "command": "bash /Users/pepe/.claude/statusline-command.sh"
+  },
   "enabledPlugins": {
-    "vtsls@claude-code-lsps": true,
-    "vscode-langservers@claude-code-lsps": true,
+    "atlassian@claude-plugins-official": true,
     "code-review@claude-code-plugins": true,
+    "coderabbit@claude-plugins-official": true,
     "commit-commands@claude-code-plugins": true,
     "explanatory-output-style@claude-code-plugins": true,
     "feature-dev@claude-code-plugins": true,
+    "figma@claude-plugins-official": true,
+    "gopls@claude-code-lsps": true,
+    "lua-lsp@claude-plugins-official": true,
     "plugin-dev@claude-code-plugins": true,
+    "pm-data-analytics@pm-skills": false,
+    "pm-execution@pm-skills": true,
+    "pm-go-to-market@pm-skills": true,
+    "pm-market-research@pm-skills": true,
+    "pm-marketing-growth@pm-skills": true,
+    "pm-product-discovery@pm-skills": true,
+    "pm-product-strategy@pm-skills": true,
+    "pm-toolkit@pm-skills": true,
+    "ralph-wiggum@claude-code-plugins": true,
     "security-guidance@claude-code-plugins": true,
+    "voltagent-core-dev@voltagent-subagents": true,
+    "voltagent-data-ai@voltagent-subagents": false,
     "voltagent-dev-exp@voltagent-subagents": true,
-    "frontend-design@claude-code-plugins": true,
-    "voltagent-core-dev@voltagent-subagents": true
+    "voltagent-domains@voltagent-subagents": true,
+    "voltagent-infra@voltagent-subagents": true,
+    "voltagent-lang@voltagent-subagents": true,
+    "voltagent-meta@voltagent-subagents": true,
+    "voltagent-qa-sec@voltagent-subagents": true,
+    "vscode-langservers@claude-code-lsps": true,
+    "vtsls@claude-code-lsps": true,
+    "linear@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
+    "claude-code-lsps": {
+      "source": {
+        "source": "github",
+        "repo": "Piebald-AI/claude-code-lsps"
+      }
+    },
     "claude-code-plugins": {
       "source": {
         "source": "github",
         "repo": "anthropics/claude-code"
       }
     },
-    "claude-code-lsps": {
+    "claude-plugins-official": {
       "source": {
         "source": "github",
-        "repo": "Piebald-AI/claude-code-lsps"
+        "repo": "anthropics/claude-plugins-official"
+      }
+    },
+    "openai-codex": {
+      "source": {
+        "source": "github",
+        "repo": "openai/codex-plugin-cc"
+      }
+    },
+    "pm-skills": {
+      "source": {
+        "source": "github",
+        "repo": "phuryn/pm-skills"
       }
     },
     "voltagent-subagents": {
@@ -61,5 +190,6 @@
   },
   "language": "한국어",
   "alwaysThinkingEnabled": true,
+  "effortLevel": "medium",
   "skipDangerousModePermissionPrompt": true
 }

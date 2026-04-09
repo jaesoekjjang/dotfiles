@@ -1,0 +1,10 @@
+nerdfont: true
+merge_strategy: rebase
+agent: claude
+
+panes:
+  - command: <agent>
+    focus: true
+  - split: horizontal
+
+theme: slate-garden
