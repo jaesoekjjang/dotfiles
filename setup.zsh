@@ -45,5 +45,8 @@ ln -sf "$DOTFILES/claude/skills" "$HOME/.claude/skills"
 ln -sf "$DOTFILES/claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
 ln -sf "$DOTFILES/claude/settings.json" "$HOME/.claude/settings.json"
 
+# hammerspoon
+ln -sfn "$DOTFILES/hammerspoon" ~/.hammerspoon
+
 # secrets (로컬 전용, 존재하지 않을 때만 생성)
 [[ ! -f ~/.secrets.zsh ]] && touch ~/.secrets.zsh
