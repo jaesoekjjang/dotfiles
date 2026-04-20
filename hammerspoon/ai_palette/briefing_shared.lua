@@ -76,7 +76,7 @@ end
 -- 한 repo의 git stdout을 repo 테이블로 파싱
 local function parseRepoOutput(stdout)
   if not stdout or stdout == "" then return nil end
-  local repo = { commits_today = {}, dirty_files = {} }
+  local repo = { commits_since = {}, dirty_files = {} }
   local started = false
   for line in stdout:gmatch("[^\n]+") do
     if line == "REPO_START" then
@@ -91,7 +91,7 @@ local function parseRepoOutput(stdout)
       elseif key == "DIRTY_COUNT" then repo.dirty_count = tonumber(value) or 0
       elseif key == "ACTIVE_TODAY" then repo.active_today = (value == "1")
       elseif key == "MERGED" then repo.merged_to_main = (value == "1")
-      elseif key == "COMMIT" then repo.commits_today[#repo.commits_today + 1] = value
+      elseif key == "COMMIT" then repo.commits_since[#repo.commits_since + 1] = value
       elseif key == "DIRTY_FILE" then
         local touched, code, path = value:match("^(%d+)|(..)|(.+)$")
         if path then
@@ -135,7 +135,9 @@ local function repoShellCmd(dir, sinceEpoch)
       done <<< "$dirty_lines"
     fi
 
-    commits_today=$(git log --all --since="$(date -v0H -v0M -v0S '+%%Y-%%m-%%d %%H:%%M:%%S')" --oneline --no-merges 2>/dev/null | head -10)
+    # commits since $SINCE (epoch) — date -r로 ISO 변환 후 git log --since
+    since_iso=$(date -r "$SINCE" '+%%Y-%%m-%%d %%H:%%M:%%S' 2>/dev/null)
+    commits_since=$(git log --all --since="$since_iso" --oneline --no-merges 2>/dev/null | head -10)
 
     merged=0
     if [ "$branch" != "main" ] && [ "$branch" != "master" ]; then
@@ -156,8 +158,8 @@ local function repoShellCmd(dir, sinceEpoch)
     echo "DIRTY_COUNT:$dirty_count"
     echo "ACTIVE_TODAY:$active_today"
     echo "MERGED:$merged"
-    if [ -n "$commits_today" ]; then
-      echo "$commits_today" | while read -r line; do echo "COMMIT:$line"; done
+    if [ -n "$commits_since" ]; then
+      echo "$commits_since" | while read -r line; do echo "COMMIT:$line"; done
     fi
     if [ "$dirty_count" -gt 0 ]; then
       while IFS= read -r line; do
@@ -203,10 +205,42 @@ function M.collectGitDetails(sinceEpoch, callback)
   end)
 end
 
--- Calendar: 오늘 일정 (osascript CLI로 비동기 실행)
+-- Calendar: icalBuddy 우선, 실패 시 AppleScript fallback
+-- icalBuddy는 ~/Library/Calendars 직접 파싱 (FDA 필요). ~0.5초
+-- AppleScript는 Calendar.app IPC 경유 (Automation 권한). ~14초
 -- callback(events) — array of { time, title }
-function M.collectCalendar(callback)
-  -- osascript는 stdin으로 script 받기 가능 — 특수문자(≥) escape 불필요
+
+local ICALBUDDY_BIN = "/opt/homebrew/bin/icalBuddy"
+
+-- icalBuddy 출력 파싱: "HH:MM - HH:MM | Event Title" 한 줄 per event
+local function parseIcalBuddyOutput(stdout)
+  local events = {}
+  if not stdout or stdout == "" then return events end
+  for line in stdout:gmatch("[^\n]+") do
+    line = line:gsub("^%s+", ""):gsub("%s+$", "")
+    -- 포맷: "10:00 - 11:00 | Title"  (dash: -, en-dash –, em-dash —)
+    local h1, m1, h2, m2, title = line:match("^(%d+):(%d+)%s*[%-–—]%s*(%d+):(%d+)%s*|%s*(.+)$")
+    if h1 and title then
+      events[#events + 1] = {
+        time = string.format("%s:%s-%s:%s", h1, m1, h2, m2),
+        title = title,
+      }
+    else
+      -- fallback 파싱: "HH:MM Title" (종일/시작시각만)
+      local h, m, t = line:match("^(%d+):(%d+)%s+(.+)$")
+      if h and t then
+        events[#events + 1] = {
+          time = string.format("%s:%s", h, m),
+          title = t,
+        }
+      end
+    end
+  end
+  return events
+end
+
+-- AppleScript fallback
+local function collectCalendarViaAppleScript(callback)
   local script = [[
     set output to ""
     set today to current date
@@ -245,8 +279,57 @@ function M.collectCalendar(callback)
     end
     table.sort(events, function(a, b) return a.time < b.time end)
     callback(events)
-  end, { "-" }) -- "-" 는 stdin에서 스크립트 읽기
+  end, { "-" })
   task:setInput(script)
+  task:start()
+end
+
+-- icalBuddy 가용성 캐시. Hammerspoon 프로세스 생명주기 동안 유지:
+--   nil   → 아직 테스트 안 함 (첫 호출 때 시도)
+--   true  → 이전 호출에서 성공 (계속 사용)
+--   false → 이전 호출에서 실패 (권한 없음 등) → 이후 바로 AppleScript로
+-- Hammerspoon 재시작하면 다시 nil로 리셋되어 재시도
+local icalBuddyUsable = nil
+
+function M.collectCalendar(callback)
+  -- 이미 실패한 적 있으면 바로 fallback (icalBuddy 프로브 5초 절약)
+  if icalBuddyUsable == false then
+    collectCalendarViaAppleScript(callback)
+    return
+  end
+  -- 바이너리 없음 → 영구 fallback
+  if not hs.fs.attributes(ICALBUDDY_BIN) then
+    icalBuddyUsable = false
+    collectCalendarViaAppleScript(callback)
+    return
+  end
+
+  local task = hs.task.new(ICALBUDDY_BIN, function(ec, stdout, stderr)
+    local ok = (ec == 0)
+      and stdout and stdout ~= ""
+      and not stdout:match("^%s*error:")
+    if ok then
+      icalBuddyUsable = true
+      local events = parseIcalBuddyOutput(stdout)
+      table.sort(events, function(a, b) return a.time < b.time end)
+      callback(events)
+    else
+      icalBuddyUsable = false
+      if stderr and stderr ~= "" then
+        print("[calendar] icalBuddy unavailable (" .. stderr:sub(1, 80) .. "), using AppleScript for remainder of session")
+      end
+      collectCalendarViaAppleScript(callback)
+    end
+  end, {
+    "-nc", "-npn",
+    "-tf", "%H:%M",
+    "-df", "",
+    "-b", "",
+    "-ss", " | ",
+    "--includeEventProps", "datetimes,title",
+    "--propertyOrder", "datetimes,title",
+    "eventsToday",
+  })
   task:start()
 end
 
@@ -388,6 +471,23 @@ function M.collectForEvening(sinceEpoch, callback)
 
   M.collectGitDetails(sinceEpoch, function(r) results.git = r; done() end)
   M.collectLinear(function(r) results.linear = r; done() end)
+end
+
+-- 아침 전용: 오늘 input 구성 (어제 중단점 + 오늘 Calendar + Linear + 어제 git 활동)
+-- sinceEpoch는 "어제 git 활동" 기준. 보통 어제 00:00
+-- calendar + linear + git 3개 병렬 수집
+function M.collectForMorning(sinceEpoch, callback)
+  local results = { calendar = nil, linear = nil, git = nil }
+  local pending = 3
+
+  local function done()
+    pending = pending - 1
+    if pending == 0 then callback(results) end
+  end
+
+  M.collectCalendar(function(r) results.calendar = r; done() end)
+  M.collectLinear(function(r) results.linear = r; done() end)
+  M.collectGitDetails(sinceEpoch, function(r) results.git = r; done() end)
 end
 
 -- ══════════════════════════════════════════════════════════

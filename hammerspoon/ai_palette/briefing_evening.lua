@@ -149,13 +149,13 @@ local function renderCommitsSection(repos)
   local any = false
 
   for _, r in ipairs(repos or {}) do
-    if r.commits_today and #r.commits_today > 0 then
+    if r.commits_since and #r.commits_since > 0 then
       any = true
       parts[#parts + 1] = string.format(
         '<div class="repo-card"><div class="repo-head"><span class="repo-name">%s</span><span class="repo-branch">%s</span></div>',
         shared.escapeHtml(r.name), shared.escapeHtml(r.branch or "")
       )
-      for _, commit in ipairs(r.commits_today) do
+      for _, commit in ipairs(r.commits_since) do
         local hash, msg = commit:match("^(%S+)%s(.+)")
         if hash then
           parts[#parts + 1] = string.format(
@@ -482,10 +482,10 @@ local function buildMarkdown(data, aCards, bCards, savedNotes, archivedCount)
   add("## 오늘 커밋")
   local anyCommit = false
   for _, r in ipairs(data.git or {}) do
-    if r.commits_today and #r.commits_today > 0 then
+    if r.commits_since and #r.commits_since > 0 then
       anyCommit = true
       add(string.format("### %s (`%s`)", r.name, r.branch or ""))
-      for _, c in ipairs(r.commits_today) do
+      for _, c in ipairs(r.commits_since) do
         add("- " .. c)
       end
       add("")
