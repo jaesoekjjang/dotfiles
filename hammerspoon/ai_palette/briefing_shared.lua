@@ -3,32 +3,68 @@
 
 local M = {}
 
+-- ── 프로젝트 루트 디렉토리 (git repo 스캔 시작점) ─────────
+-- 각 루트에서 maxdepth 4로 .git 파일/디렉토리 탐색 → worktree도 포함
+-- 사용자 환경 맞춤 필요하면 이 리스트만 편집
+local HOME = os.getenv("HOME") or ""
+M.PROJECT_ROOTS = {
+  HOME .. "/Programming",
+  HOME .. "/.codex/worktrees",
+  HOME .. "/WebstormProjects",
+  HOME .. "/dev",
+  os.getenv("DOTFILES") or (HOME .. "/Library/Mobile Documents/com~apple~CloudDocs/Dotfiles"),
+}
+M.SCAN_MAXDEPTH = 4
+
 -- ══════════════════════════════════════════════════════════
 -- Collectors
 -- ══════════════════════════════════════════════════════════
 
--- tmux 세션 pane cwd에서 git repo 디렉토리 집합 수집
--- callback(repoDirs) — array of absolute paths, 중복 제거됨
+-- git repo 디렉토리 집합 수집
+-- 소스 1: PROJECT_ROOTS 아래 maxdepth N까지 .git 스캔 (worktree .git 파일 포함)
+-- 소스 2: tmux 세션 pane cwd (위 루트 바깥에 클론된 repo 보충)
+-- 결과는 중복 제거 후 절대 경로 배열
+-- callback(repoDirs)
 function M.collectGitRepoDirs(callback)
-  local cmd = [[
+  -- find 명령에 루트 리스트 전달 (없는 경로는 무시)
+  local rootArgs = {}
+  for _, root in ipairs(M.PROJECT_ROOTS) do
+    rootArgs[#rootArgs + 1] = string.format('%q', root)
+  end
+  local rootsExpr = table.concat(rootArgs, " ")
+
+  local cmd = string.format([[
+    # 1) PROJECT_ROOTS 스캔 — 존재하는 경로만, .git 파일/디렉토리 둘 다 잡음
+    for root in %s; do
+      [ -d "$root" ] || continue
+      find "$root" -maxdepth %d -name .git -prune 2>/dev/null
+    done | while read -r gitpath; do
+      # .git의 부모 디렉토리가 repo root
+      dirname "$gitpath"
+    done
+
+    # 2) tmux 세션 pane cwd 보충 (루트 바깥)
     if command -v tmux >/dev/null && tmux list-sessions >/dev/null 2>&1; then
       for sid in $(tmux list-sessions -F '#{session_name}' 2>/dev/null); do
         tmux list-panes -t "$sid" -F '#{pane_current_path}' 2>/dev/null
-      done | sort -u | while read -r dir; do
+      done | while read -r dir; do
         [ -z "$dir" ] && continue
-        # worktree도 .git 파일(디렉토리 아님)로 존재 → -e로 체크
         if [ -e "$dir/.git" ]; then
           echo "$dir"
         fi
       done
     fi
-  ]]
+  ]], rootsExpr, M.SCAN_MAXDEPTH)
 
   local task = hs.task.new("/bin/zsh", function(_, stdout, _)
+    local seen = {}
     local dirs = {}
     if stdout then
       for line in stdout:gmatch("[^\n]+") do
-        dirs[#dirs + 1] = line
+        if line ~= "" and not seen[line] then
+          seen[line] = true
+          dirs[#dirs + 1] = line
+        end
       end
     end
     callback(dirs)
@@ -37,10 +73,112 @@ function M.collectGitRepoDirs(callback)
   task:start()
 end
 
+-- 한 repo의 git stdout을 repo 테이블로 파싱
+local function parseRepoOutput(stdout)
+  if not stdout or stdout == "" then return nil end
+  local repo = { commits_today = {}, dirty_files = {} }
+  local started = false
+  for line in stdout:gmatch("[^\n]+") do
+    if line == "REPO_START" then
+      started = true
+    elseif line == "REPO_END" then
+      break
+    elseif started then
+      local key, value = line:match("^([^:]+):(.*)$")
+      if key == "PATH" then repo.path = value
+      elseif key == "NAME" then repo.name = value
+      elseif key == "BRANCH" then repo.branch = value
+      elseif key == "DIRTY_COUNT" then repo.dirty_count = tonumber(value) or 0
+      elseif key == "ACTIVE_TODAY" then repo.active_today = (value == "1")
+      elseif key == "MERGED" then repo.merged_to_main = (value == "1")
+      elseif key == "COMMIT" then repo.commits_today[#repo.commits_today + 1] = value
+      elseif key == "DIRTY_FILE" then
+        local touched, code, path = value:match("^(%d+)|(..)|(.+)$")
+        if path then
+          repo.dirty_files[#repo.dirty_files + 1] = {
+            touched_today = (touched == "1"),
+            status = code,
+            path = path,
+          }
+        end
+      end
+    end
+  end
+  if not started then return nil end
+  return repo
+end
+
+-- 단일 repo에 대해 git 정보를 수집하는 쉘 스크립트 템플릿
+-- 각 repo마다 hs.task 하나씩 spawn → macOS libdispatch가 병렬 처리
+local function repoShellCmd(dir, sinceEpoch)
+  return string.format([[
+    dir=%q
+    SINCE=%s
+    cd "$dir" 2>/dev/null || exit 0
+
+    name=$(basename "$dir")
+    branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+    dirty_lines=$(git status --porcelain 2>/dev/null)
+    dirty_count=$(echo "$dirty_lines" | grep -c . || true)
+
+    active_today=0
+    if [ "$dirty_count" -gt 0 ]; then
+      while IFS= read -r line; do
+        [ -z "$line" ] && continue
+        file="${line:3}"
+        if [ -e "$dir/$file" ]; then
+          mtime=$(stat -f %%m "$dir/$file" 2>/dev/null || echo 0)
+          if [ "$mtime" -gt "$SINCE" ]; then
+            active_today=1; break
+          fi
+        fi
+      done <<< "$dirty_lines"
+    fi
+
+    commits_today=$(git log --all --since="$(date -v0H -v0M -v0S '+%%Y-%%m-%%d %%H:%%M:%%S')" --oneline --no-merges 2>/dev/null | head -10)
+
+    merged=0
+    if [ "$branch" != "main" ] && [ "$branch" != "master" ]; then
+      tip=$(git rev-parse HEAD 2>/dev/null)
+      if [ -n "$tip" ]; then
+        if git merge-base --is-ancestor "$tip" origin/main 2>/dev/null; then
+          merged=1
+        elif git merge-base --is-ancestor "$tip" origin/master 2>/dev/null; then
+          merged=1
+        fi
+      fi
+    fi
+
+    echo "REPO_START"
+    echo "PATH:$dir"
+    echo "NAME:$name"
+    echo "BRANCH:$branch"
+    echo "DIRTY_COUNT:$dirty_count"
+    echo "ACTIVE_TODAY:$active_today"
+    echo "MERGED:$merged"
+    if [ -n "$commits_today" ]; then
+      echo "$commits_today" | while read -r line; do echo "COMMIT:$line"; done
+    fi
+    if [ "$dirty_count" -gt 0 ]; then
+      while IFS= read -r line; do
+        [ -z "$line" ] && continue
+        status_code="${line:0:2}"
+        file="${line:3}"
+        touched_today=0
+        if [ -e "$dir/$file" ]; then
+          mtime=$(stat -f %%m "$dir/$file" 2>/dev/null || echo 0)
+          if [ "$mtime" -gt "$SINCE" ]; then touched_today=1; fi
+        fi
+        echo "DIRTY_FILE:$touched_today|$status_code|$file"
+      done <<< "$dirty_lines"
+    fi
+    echo "REPO_END"
+  ]], dir, tostring(sinceEpoch))
+end
+
 -- 각 repo에 대해 git 정보 수집 (Tier A/B 판정 포함)
 -- sinceEpoch: 이 시각 이후 mtime을 가진 dirty 파일이 있으면 Tier A
--- callback(repos) — array:
---   { name, path, branch, dirty_count, active_today, commits_today, merged_to_main }
+-- 병렬: repo 하나당 hs.task 하나. 모든 task 완료 시 callback
 function M.collectGitDetails(sinceEpoch, callback)
   M.collectGitRepoDirs(function(dirs)
     if #dirs == 0 then
@@ -48,125 +186,20 @@ function M.collectGitDetails(sinceEpoch, callback)
       return
     end
 
-    -- 각 디렉토리에 대한 git 정보를 한 번의 shell 호출로 수집
-    -- shell 스크립트에 dirs 목록을 stdin으로 전달 (trailing newline 필수: read가 마지막 라인 감지용)
-    local dirList = table.concat(dirs, "\n") .. "\n"
-    local sinceStr = tostring(sinceEpoch)
+    local repos = {}
+    local pending = #dirs
 
-    local cmd = string.format([[
-      SINCE=%s
-      while IFS= read -r dir; do
-        [ -z "$dir" ] && continue
-        cd "$dir" 2>/dev/null || continue
-
-        name=$(basename "$dir")
-        branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-
-        # dirty 파일 목록 (porcelain: "XY path")
-        dirty_lines=$(git status --porcelain 2>/dev/null)
-        dirty_count=$(echo "$dirty_lines" | grep -c . || true)
-
-        # active_today 1차 계산 (헤더용). 파일 목록은 REPO_START 이후에 별도 emit
-        active_today=0
-        if [ "$dirty_count" -gt 0 ]; then
-          while IFS= read -r line; do
-            [ -z "$line" ] && continue
-            file="${line:3}"
-            if [ -e "$dir/$file" ]; then
-              mtime=$(stat -f %%m "$dir/$file" 2>/dev/null || echo 0)
-              if [ "$mtime" -gt "$SINCE" ]; then
-                active_today=1
-                break
-              fi
-            fi
-          done <<< "$dirty_lines"
-        fi
-
-        # 오늘 커밋
-        commits_today=$(git log --all --since="$(date -v0H -v0M -v0S '+%%Y-%%m-%%d %%H:%%M:%%S')" --oneline --no-merges 2>/dev/null | head -10)
-
-        # origin/main에 머지되었는지
-        merged=0
-        if [ "$branch" != "main" ] && [ "$branch" != "master" ]; then
-          tip=$(git rev-parse HEAD 2>/dev/null)
-          if [ -n "$tip" ]; then
-            if git merge-base --is-ancestor "$tip" origin/main 2>/dev/null; then
-              merged=1
-            elif git merge-base --is-ancestor "$tip" origin/master 2>/dev/null; then
-              merged=1
-            fi
-          fi
-        fi
-
-        echo "REPO_START"
-        echo "PATH:$dir"
-        echo "NAME:$name"
-        echo "BRANCH:$branch"
-        echo "DIRTY_COUNT:$dirty_count"
-        echo "ACTIVE_TODAY:$active_today"
-        echo "MERGED:$merged"
-        if [ -n "$commits_today" ]; then
-          echo "$commits_today" | while read -r line; do echo "COMMIT:$line"; done
-        fi
-        # 각 dirty 파일 상세 (status_code + touched_today + path)
-        if [ "$dirty_count" -gt 0 ]; then
-          while IFS= read -r line; do
-            [ -z "$line" ] && continue
-            status_code="${line:0:2}"
-            file="${line:3}"
-            touched_today=0
-            if [ -e "$dir/$file" ]; then
-              mtime=$(stat -f %%m "$dir/$file" 2>/dev/null || echo 0)
-              if [ "$mtime" -gt "$SINCE" ]; then touched_today=1; fi
-            fi
-            echo "DIRTY_FILE:$touched_today|$status_code|$file"
-          done <<< "$dirty_lines"
-        fi
-        echo "REPO_END"
-      done
-    ]], sinceStr)
-
-    local task = hs.task.new("/bin/zsh", function(_, stdout, _)
-      local repos = {}
-      local current = nil
-
-      if stdout then
-        for line in stdout:gmatch("[^\n]+") do
-          if line == "REPO_START" then
-            current = { commits_today = {}, dirty_files = {} }
-          elseif line == "REPO_END" and current then
-            repos[#repos + 1] = current
-            current = nil
-          elseif current then
-            local key, value = line:match("^([^:]+):(.*)$")
-            if key == "PATH" then current.path = value
-            elseif key == "NAME" then current.name = value
-            elseif key == "BRANCH" then current.branch = value
-            elseif key == "DIRTY_COUNT" then current.dirty_count = tonumber(value) or 0
-            elseif key == "ACTIVE_TODAY" then current.active_today = (value == "1")
-            elseif key == "MERGED" then current.merged_to_main = (value == "1")
-            elseif key == "COMMIT" then current.commits_today[#current.commits_today + 1] = value
-            elseif key == "DIRTY_FILE" then
-              local touched, code, path = value:match("^(%d+)|(..)|(.+)$")
-              if path then
-                current.dirty_files[#current.dirty_files + 1] = {
-                  touched_today = (touched == "1"),
-                  status = code,
-                  path = path,
-                }
-              end
-            end
-          end
-        end
-      end
-
-      callback(repos)
-    end, { "-lc", cmd })
-
-    -- stdin으로 dirList 전달
-    task:setInput(dirList)
-    task:setWorkingDirectory("/tmp")
-    task:start()
+    for _, dir in ipairs(dirs) do
+      local cmd = repoShellCmd(dir, sinceEpoch)
+      local task = hs.task.new("/bin/zsh", function(_, stdout, _)
+        local repo = parseRepoOutput(stdout)
+        if repo then repos[#repos + 1] = repo end
+        pending = pending - 1
+        if pending == 0 then callback(repos) end
+      end, { "-c", cmd })
+      task:setWorkingDirectory("/tmp")
+      task:start()
+    end
   end)
 end
 
@@ -342,11 +375,11 @@ function M.collectAll(sinceEpoch, callback)
   M.collectLinear(function(r) results.linear = r; done() end)
 end
 
--- 저녁 전용: Calendar 제외 (저녁은 "하루 닫기" 관점이라 Calendar 불필요)
--- git + workmux + linear 3개만 병렬 수집 → Calendar 10초 비용 회피
+-- 저녁 전용: Calendar/workmux 제외 (workmux는 menubar로 별도 처리)
+-- git + linear 2개만 병렬 수집
 function M.collectForEvening(sinceEpoch, callback)
-  local results = { git = nil, workmux = nil, linear = nil }
-  local pending = 3
+  local results = { git = nil, linear = nil }
+  local pending = 2
 
   local function done()
     pending = pending - 1
@@ -354,7 +387,6 @@ function M.collectForEvening(sinceEpoch, callback)
   end
 
   M.collectGitDetails(sinceEpoch, function(r) results.git = r; done() end)
-  M.collectWorkmux(function(r) results.workmux = r; done() end)
   M.collectLinear(function(r) results.linear = r; done() end)
 end
 

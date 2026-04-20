@@ -66,20 +66,25 @@ local function buildCards(tierA, tierB, activeById)
     }
   end
 
+  -- Tier B는 "중단점 기록된(active.json에 존재) + 오늘 활동 없음" 만 통과
+  -- 이렇게 해야 dirty repo가 수십 개여도 사용자가 의도적으로 기록한 것만 남음
   for _, r in ipairs(tierB) do
     local id = state.entryId(r.name, r.branch)
     local existing = activeById[id]
-    local staleDays = existing and daysBetween(existing.last_touched, nowEpoch) or 0
-    bCards[#bCards + 1] = {
-      id = id,
-      repo = r.name,
-      branch = r.branch,
-      dirty_count = r.dirty_count,
-      dirty_files = r.dirty_files or {},
-      merged = r.merged_to_main,
-      stale_days = staleDays,
-      has_note = existing ~= nil,
-    }
+    if existing then
+      local staleDays = daysBetween(existing.last_touched, nowEpoch)
+      bCards[#bCards + 1] = {
+        id = id,
+        repo = r.name,
+        branch = r.branch,
+        dirty_count = r.dirty_count,
+        dirty_files = r.dirty_files or {},
+        merged = r.merged_to_main,
+        stale_days = staleDays,
+        has_note = true,
+        note = existing.note,
+      }
+    end
   end
 
   return aCards, bCards
@@ -207,7 +212,7 @@ end
 
 local function renderTierB(cards)
   if #cards == 0 then
-    return '<div class="empty">장기 WIP 없음</div>'
+    return '<div class="empty">기록된 장기 WIP 없음 (중단점 입력된 항목 중 오늘 활동 있는 건 위쪽에 표시됨)</div>'
   end
 
   local parts = {}
@@ -223,6 +228,13 @@ local function renderTierB(cards)
       )
     end
     local mergeBadge = c.merged and '<span class="badge badge-ok">merged</span>' or ''
+    local noteBlock = ""
+    if c.note and c.note ~= "" then
+      noteBlock = string.format(
+        '<div class="saved-note">%s</div>',
+        shared.escapeHtml(c.note):gsub("\n", "<br>")
+      )
+    end
     parts[#parts + 1] = string.format([[
 <div class="repo-card tier-b">
   <div class="repo-head">
@@ -232,6 +244,7 @@ local function renderTierB(cards)
     %s %s
     <button class="disclosure" data-target="filesb-%s" aria-expanded="false">▸ 파일</button>
   </div>
+  %s
   <div class="file-list-wrap" id="filesb-%s" hidden>%s</div>
 </div>
     ]],
@@ -241,55 +254,10 @@ local function renderTierB(cards)
       staleBadge,
       mergeBadge,
       shared.escapeHtml(c.id),
+      noteBlock,
       shared.escapeHtml(c.id),
       renderDirtyFiles(c.dirty_files)
     )
-  end
-  return table.concat(parts, "\n")
-end
-
--- workmux list --json 결과 구조:
---   { handle, branch, path, is_main, mode, has_uncommitted_changes, is_open, created_at }
-local function renderWorkmux(worktrees)
-  if not worktrees or #worktrees == 0 then
-    return '<div class="empty">workmux 관리 worktree 없음</div>'
-  end
-
-  -- is_main은 baseline repo (주로 main 브랜치). secondary worktree는 is_main=false
-  local secondary, mains = {}, {}
-  for _, wt in ipairs(worktrees) do
-    if wt.is_main then mains[#mains + 1] = wt else secondary[#secondary + 1] = wt end
-  end
-
-  local parts = {}
-
-  local function renderRow(wt)
-    local badges = {}
-    if wt.has_uncommitted_changes then
-      badges[#badges + 1] = '<span class="badge badge-warn">uncommitted</span>'
-    end
-    if wt.is_open then
-      badges[#badges + 1] = '<span class="badge badge-ok">tmux open</span>'
-    end
-    return string.format(
-      '<li class="item"><strong>%s</strong> <span class="mono">%s</span> %s</li>',
-      shared.escapeHtml(wt.handle or "?"),
-      shared.escapeHtml(wt.branch or ""),
-      table.concat(badges, " ")
-    )
-  end
-
-  if #secondary > 0 then
-    parts[#parts + 1] = '<div style="font-size:11px;color:#9ca3af;margin:4px 0;">worktree</div>'
-    parts[#parts + 1] = '<ul style="list-style:none;padding:0;">'
-    for _, wt in ipairs(secondary) do parts[#parts + 1] = renderRow(wt) end
-    parts[#parts + 1] = '</ul>'
-  end
-  if #mains > 0 then
-    parts[#parts + 1] = '<div style="font-size:11px;color:#9ca3af;margin:10px 0 4px;">main (baseline)</div>'
-    parts[#parts + 1] = '<ul style="list-style:none;padding:0;">'
-    for _, wt in ipairs(mains) do parts[#parts + 1] = renderRow(wt) end
-    parts[#parts + 1] = '</ul>'
   end
   return table.concat(parts, "\n")
 end
@@ -389,6 +357,12 @@ local function buildHtml(data, aCards, bCards, archivedCount)
     .file-path { color: #c9ccd1; }
     .touched-dot { color: #34d399; font-size: 10px; }
 
+    .saved-note {
+      background: #14151a; border-left: 2px solid #818cf8;
+      padding: 8px 10px; margin-top: 8px;
+      font-size: 12px; color: #c9ccd1; line-height: 1.5;
+    }
+
     .footer {
       margin-top: 32px; padding-top: 16px; border-top: 1px solid #2d2e32;
       font-size: 11px; color: #6b7280; line-height: 1.8;
@@ -419,12 +393,7 @@ local function buildHtml(data, aCards, bCards, archivedCount)
   </div>
 
   <div class="section">
-    <div class="section-title">🗂 장기 WIP</div>
-    %s
-  </div>
-
-  <div class="section">
-    <div class="section-title">🔧 workmux</div>
+    <div class="section-title">🗂 기록된 장기 WIP</div>
     %s
   </div>
 
@@ -486,7 +455,6 @@ document.addEventListener('keydown', function(e) {
     renderCommitsSection(data.git),
     renderTierA(aCards),
     renderTierB(bCards),
-    renderWorkmux(data.workmux),
     renderLinear(data.linear),
     os.date("%Y-%m-%d"),
     os.date("%Y-%m-%d")
@@ -541,7 +509,7 @@ local function buildMarkdown(data, aCards, bCards, savedNotes, archivedCount)
     end
   end
 
-  add("## 장기 WIP")
+  add("## 기록된 장기 WIP")
   if #bCards == 0 then
     add("_없음_")
   else
@@ -552,18 +520,11 @@ local function buildMarkdown(data, aCards, bCards, savedNotes, archivedCount)
       elseif c.stale_days > 0 then
         suffix = string.format(" — %d일간 변경 없음", c.stale_days)
       end
-      add(string.format("- %s (`%s`) %d dirty%s", c.repo, c.branch or "", c.dirty_count, suffix))
-    end
-  end
-  add("")
-
-  add("## workmux 상태")
-  if not data.workmux or #data.workmux == 0 then
-    add("_활성 worktree 없음_")
-  else
-    for _, wt in ipairs(data.workmux) do
-      add(string.format("- %s: %s", wt.name or wt.branch or "unknown",
-        wt.agent_status or wt.status or "-"))
+      add(string.format("### %s (`%s`) %d dirty%s", c.repo, c.branch or "", c.dirty_count, suffix))
+      if c.note and c.note ~= "" then
+        add("> " .. c.note:gsub("\n", "\n> "))
+      end
+      add("")
     end
   end
   add("")
