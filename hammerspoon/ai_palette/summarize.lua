@@ -106,21 +106,30 @@ local function showResult(title, url, content)
   .header .meta { font-size: 11px; color: #9a9080; }
   .header .meta a { color: #8b5c2a; text-decoration: none; }
   .header .meta a:hover { text-decoration: underline; }
-  .content { font-size: 14px; white-space: pre-wrap; }
-  h2 { color: #8b5c2a; margin: 20px 0 8px; font-size: 15px; }
-  h3 { color: #6b4c2a; margin: 16px 0 6px; font-size: 14px; }
-  ul, ol { margin: 8px 0 8px 20px; }
-  li { margin-bottom: 4px; }
-  code {
-    background: #ece5d8; padding: 2px 6px; border-radius: 4px;
-    font-family: "SF Mono", Menlo, monospace; font-size: 13px; color: #5a4a3a;
+  .content { font-size: 14px; }
+  .content h2 {
+    color: #8b5c2a; font-size: 15px; margin: 24px 0 10px;
+    padding-bottom: 6px; border-bottom: 1px solid #e0d9cd;
   }
-  blockquote {
+  .content h2:first-child { margin-top: 0; }
+  .content p { margin: 8px 0; line-height: 1.8; }
+  .content ul, .content ol { margin: 8px 0 8px 20px; }
+  .content li { margin-bottom: 6px; line-height: 1.7; }
+  .content pre {
+    background: #2b2520; color: #e8dfd4; padding: 12px;
+    border-radius: 6px; overflow-x: auto; margin: 10px 0;
+    font-size: 12px; line-height: 1.5;
+  }
+  .content code {
+    font-family: "SF Mono", Menlo, monospace; font-size: 12px;
+  }
+  .content p code {
+    background: #ece5d8; padding: 2px 6px; border-radius: 4px; color: #5a4a3a;
+  }
+  .content blockquote {
     border-left: 3px solid #d4c4a8; padding-left: 12px;
     margin: 8px 0; color: #6b5d4f;
   }
-  hr { border: none; border-top: 1px solid #e0d9cd; margin: 16px 0; }
-  .section { margin-bottom: 24px; }
   .close-btn {
     position: fixed; top: 12px; right: 16px;
     background: #e0d9cd; border: none; color: #9a9080;
@@ -173,17 +182,23 @@ Given the following text from a web page:
 1. First, write a concise summary in Korean (3-5 bullet points, focus on key takeaways).
 2. Then, if the original text is in English, provide a natural Korean translation of the full content. If already Korean, provide an English translation instead.
 
-Format your output exactly like this:
-## 요약
-- point 1
-- point 2
-- ...
+Output MUST be valid HTML fragments (no <html>, <body>, or <head> tags). Use these exact tags:
 
-## 번역
-(translated content here)
+<h2>요약</h2>
+<ul>
+  <li>key point 1</li>
+  <li>key point 2</li>
+</ul>
 
-Keep the summary sharp and actionable. The translation should be natural, not literal.
-Do NOT wrap output in markdown code fences.]]
+<h2>번역</h2>
+<p>translated paragraph</p>
+<p>next paragraph</p>
+
+Rules:
+- Keep the summary sharp and actionable
+- The translation should be natural, not literal
+- Use <p> tags for paragraphs, <ul><li> for lists, <code> for inline code, <pre><code> for code blocks
+- Output raw HTML only — no markdown, no code fences]]
 
 -- ── 텍스트 가져오기 ────────────────────────────────────────
 local function getPageText(appName, callback)

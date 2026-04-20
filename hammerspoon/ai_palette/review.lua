@@ -145,6 +145,7 @@ local function runTask(bin, args, callback, env)
     callback(exitCode, stdout, stderr)
   end, { "-lc", cmd })
   activeTask = task
+  task:setWorkingDirectory("/tmp")
   task:start()
 end
 
@@ -157,9 +158,6 @@ local function showReview(title, reviewMarkdown)
     reviewWebview = nil
   end
 
-  local escapedReview = reviewMarkdown
-    :gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;")
-
   local html = [[
 <!DOCTYPE html>
 <html>
@@ -170,15 +168,47 @@ local function showReview(title, reviewMarkdown)
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
     background: #f5f0e8; color: #3b3730;
-    padding: 24px; line-height: 1.6;
+    padding: 24px; line-height: 1.7;
   }
   .header {
     border-bottom: 1px solid #e0d9cd; padding-bottom: 16px; margin-bottom: 20px;
   }
   .header h1 { font-size: 18px; color: #8b5c2a; margin-bottom: 4px; }
   .header .meta { font-size: 12px; color: #9a9080; }
-  .content {
-    font-size: 14px; white-space: pre-wrap; word-wrap: break-word;
+  .content { font-size: 14px; }
+  .content h2 {
+    color: #8b5c2a; font-size: 15px; margin: 24px 0 10px;
+    padding-bottom: 6px; border-bottom: 1px solid #e0d9cd;
+  }
+  .content h2:first-child { margin-top: 0; }
+  .content p { margin: 8px 0; }
+  .content ul { margin: 8px 0 8px 20px; }
+  .content li { margin-bottom: 4px; }
+  .issue {
+    margin: 12px 0; padding: 12px; border-radius: 8px;
+    border-left: 4px solid #ccc;
+  }
+  .issue.critical { background: #fdf0ed; border-left-color: #d94a38; }
+  .issue.warning  { background: #fef8ec; border-left-color: #d4a017; }
+  .issue.suggestion { background: #eef5fd; border-left-color: #4a90d9; }
+  .tag {
+    display: inline-block; font-size: 11px; font-weight: 700;
+    padding: 2px 8px; border-radius: 4px; margin-bottom: 6px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .critical .tag { background: #d94a38; color: #fff; }
+  .warning  .tag { background: #d4a017; color: #fff; }
+  .suggestion .tag { background: #4a90d9; color: #fff; }
+  pre {
+    background: #2b2520; color: #e8dfd4; padding: 12px;
+    border-radius: 6px; overflow-x: auto; margin: 8px 0;
+    font-size: 12px; line-height: 1.5;
+  }
+  code {
+    font-family: "SF Mono", Menlo, monospace; font-size: 12px;
+  }
+  p code {
+    background: #ece5d8; padding: 2px 6px; border-radius: 4px; color: #5a4a3a;
   }
 </style>
 </head>
@@ -187,7 +217,7 @@ local function showReview(title, reviewMarkdown)
     <h1>]] .. (title or "Code Review") .. [[</h1>
     <div class="meta">Reviewed by Claude · ]] .. os.date("%Y-%m-%d %H:%M") .. [[</div>
   </div>
-  <div class="content">]] .. escapedReview .. [[</div>
+  <div class="content">]] .. reviewMarkdown .. [[</div>
 </body>
 </html>
 ]]
@@ -215,13 +245,38 @@ end
 local REVIEW_PROMPT = [[You are a senior software engineer doing a code review.
 Review the following PR diff. Be concise and actionable.
 
-Format your review clearly with sections (Summary, Issues, Good, Verdict).
-Tag issues with severity: [CRITICAL], [WARNING], or [SUGGESTION].
+Output MUST be valid HTML fragments (no <html>, <body>, or <head> tags). Use these exact tags:
+
+<h2>Summary</h2>
+<p>1-3 sentence overview of the change</p>
+
+<h2>Issues</h2>
+<div class="issue critical">
+  <span class="tag">CRITICAL</span>
+  <p>Description of the issue</p>
+  <pre><code>relevant code snippet</code></pre>
+</div>
+<div class="issue warning">
+  <span class="tag">WARNING</span>
+  <p>Description</p>
+</div>
+<div class="issue suggestion">
+  <span class="tag">SUGGESTION</span>
+  <p>Description</p>
+</div>
+
+<h2>Good</h2>
+<ul><li>positive point</li></ul>
+
+<h2>Verdict</h2>
+<p>승인 / 승인 불가 with reason</p>
 
 Rules:
 - Keep the entire review under 600 words
-- Use Korean
-- Do NOT wrap output in markdown code fences]]
+- Use Korean for all descriptions
+- Output raw HTML only — no markdown, no code fences, no wrapping
+- If no issues at a severity level, omit that level
+- Code snippets in <pre><code> must be HTML-escaped]]
 
 -- ── 메인 함수 ──────────────────────────────────────────────
 function M.run()
@@ -280,7 +335,8 @@ function M.run()
       stopSpinner()
       if ok then
         local prNum = captures[#captures] or "?"
-        showReview(provider.name:upper() .. " MR #" .. prNum .. " Review", result)
+        local prLabel = provider.name == "github" and "PR" or "MR"
+        showReview(provider.name:upper() .. " " .. prLabel .. " #" .. prNum .. " Review", result)
       else
         hs.alert.show(result)
       end

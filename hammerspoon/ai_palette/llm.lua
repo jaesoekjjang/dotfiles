@@ -39,6 +39,7 @@ function M.ask(prompt, input, callback)
       callback("❌ Claude 호출 실패: " .. err:sub(1, 100), false)
     end
   end, { "-lc", cmd })
+  task:setWorkingDirectory(TMP_DIR)
   task:start()
 end
 
