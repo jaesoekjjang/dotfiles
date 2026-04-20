@@ -1,10 +1,12 @@
 nerdfont: true
 merge_strategy: rebase
-agent: claude
+worktree_naming: basename
+agent: 'claude --dangerously-skip-permissions'
 
 panes:
   - command: <agent>
     focus: true
-  - split: horizontal
+  - command: corepack enable && pnpm install 
+    split: horizontal
 
 theme: slate-garden

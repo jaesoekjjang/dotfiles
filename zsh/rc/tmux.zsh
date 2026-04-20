@@ -1,4 +1,4 @@
-tmux_monitor() {
+tmux_ops() {
   emulate -L zsh
   local session_name="monitor"
 

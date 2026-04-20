@@ -32,3 +32,5 @@ opt.clipboard = "unnamedplus"
 
 opt.makeprg = "npx eslint ."
 opt.completeopt = "menuone,popup,noselect"
+
+vim.o.background = "dark"

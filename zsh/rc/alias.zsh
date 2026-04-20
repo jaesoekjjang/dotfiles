@@ -6,7 +6,7 @@ alias v="nvim"
 alias cat="bat"
 alias cd="z"
 alias zrc="${=EDITOR} ~/.zshrc"
-alias zshrc="${=EDITOR} ~/.zshrc"
+alias sz="source ~/.zshrc"
 alias ssh_kitty="kitty +kitten ssh"
 
 # npm
@@ -23,10 +23,14 @@ alias pnl="pnpm lint"
 alias pnr="pnpm cz"
 
 # tmux
+alias tm="tmux"
 alias ta="tmux attach"
-alias tl="tmux list-sessions"
 alias tn="tmux new -t"
+alias tl="tmux list-sessions"
 alias tk="tmux kill-session -t"
+alias tks="tmux kill-server"
+alias ts="tmux switch-client -t" 
+alias tw="tmux new-window"
 
 # git
 alias g="git"
@@ -40,6 +44,9 @@ alias gpf="git push --force-with-lease"
 alias gpl="git pull"
 alias gco="git checkout"
 alias gcb="git checkout -b"
+alias gl="git log --oneline --graph --decorate"
+alias gr="git restore"
+alias grs="git restore --staged"
 alias gn="git config user.name"
 alias ge="git config user.email"
 
@@ -54,5 +61,5 @@ alias y="yazi"
 # etc, custom functions
 alias cl='claude --dangerously-skip-permissions'
 alias tp='tmux_project'
-alias tm='tmux_monitor'
+alias to='tmux_ops'
 alias e="$EDITOR"

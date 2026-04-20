@@ -347,6 +347,12 @@ automatically-unhide-macos-hidden-apps = true
 
 # messenger end
 
+# Entertainment start
+[[on-window-detected]]
+  if.app-id = 'com.spotify.client'
+  run = "move-node-to-workspace E"
+# Entertainment end
+
 # file explorer start
 [[on-window-detected]]
   if.app-id = 'com.apple.finder'

@@ -1,0 +1,1 @@
+eval "$(workmux completions zsh)"

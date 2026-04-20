@@ -34,6 +34,14 @@ end, {
 	nargs = "?",
 })
 
+vim.api.nvim_create_user_command("CPathLine", function()
+	local abs = vim.fn.expand("%:p")
+	local root = vim.fn.getcwd() .. "/"
+	local path = abs:sub(#root + 1)
+	local line = vim.fn.line(".")
+	vim.fn.setreg("+", path .. ":" .. line)
+end, {})
+
 vim.api.nvim_create_user_command("CParent", function(o)
 	local flags = o.args
 	local modifier = vim.fn.expand("%:h" .. parse_flag(flags))
