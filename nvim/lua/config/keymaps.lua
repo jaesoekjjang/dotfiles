@@ -205,5 +205,11 @@ end)
 
 
 
-function hello_world()
-end
+-- hammerspoon://file URL을 클립보드에 복사
+mapKey("<leader>yl", function()
+	local path = vim.fn.expand("%:p")
+	local line = vim.fn.line(".")
+	local url = string.format("hammerspoon://file?path=%s&line=%d", path, line)
+	vim.fn.setreg("+", url)
+	vim.notify("copied: " .. url, vim.log.levels.INFO)
+end, "n", { desc = "Yank hammerspoon file URL" })

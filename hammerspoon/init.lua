@@ -3,6 +3,13 @@ hs.allowAppleScript(true)
 -- URL Dispatcher: 특정 링크를 네이티브 앱으로 강제 라우팅
 require("url_dispatcher").start()
 
+-- URL Scheme: hammerspoon:// 커스텀 스킴 핸들러
+require("url_scheme").start()
+
+-- Launcher: Hyper+Space → 모든 액션 chooser
+local launcher = require("launcher")
+hs.hotkey.bind({ "cmd", "ctrl", "shift" }, "space", launcher.show)
+
 -- Code Review (브라우저 PR/MR 페이지에서 직접 실행)
 local review = require("ai_palette.review")
 hs.hotkey.bind({ "cmd", "ctrl", "shift" }, "r", review.run) -- Hyper+R

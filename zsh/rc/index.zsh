@@ -9,5 +9,6 @@ source "$ZSH_CONFIG_DIR/bindkey.zsh"
 source "$ZSH_CONFIG_DIR/tmux.zsh"
 source "$ZSH_CONFIG_DIR/workmux.zsh"
 source "$ZSH_CONFIG_DIR/obsidian.zsh"
+source "$ZSH_CONFIG_DIR/hammerspoon.zsh"
 
 [[ -f ~/.secrets.zsh ]] && source ~/.secrets.zsh
