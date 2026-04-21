@@ -611,11 +611,13 @@ function M.makeWebview(title, html, width, height, onClose)
     w, h
   )
 
+  local urlScheme = require("url_scheme")
   local wv = hs.webview.new(rect, { developerExtrasEnabled = true })
     :windowTitle(title)
     :windowStyle({ "titled", "closable", "resizable", "miniaturizable" })
     :allowTextEntry(true)
     :level(hs.drawing.windowLevels.floating)
+    :policyCallback(urlScheme.webviewPolicy)
     :html(html)
 
   if onClose then

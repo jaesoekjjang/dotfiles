@@ -645,11 +645,13 @@ function M.run()
       w, h
     )
 
+    local urlScheme = require("url_scheme")
     currentWebview = hs.webview.new(rect, { developerExtrasEnabled = true }, currentUserContent)
       :windowTitle("Evening Briefing")
       :windowStyle({ "titled", "closable", "resizable", "miniaturizable" })
       :allowTextEntry(true)
       :level(hs.drawing.windowLevels.floating)
+      :policyCallback(urlScheme.webviewPolicy)
       :html(html)
       :windowCallback(function(action)
         if action == "closing" then
