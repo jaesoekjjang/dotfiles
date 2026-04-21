@@ -119,7 +119,12 @@ function M.webviewPolicy(action, webview, navAction)
   local url = navAction.request.URL or ""
   if url:match("^hammerspoon://") then
     hs.urlevent.openURL(url)
-    return false -- webview 내 네비게이션 차단
+    return false
+  end
+  -- 외부 링크는 기본 핸들러로 열기 (url_dispatcher 경유)
+  if url:match("^https?://") then
+    hs.urlevent.openURL(url)
+    return false
   end
   return true
 end

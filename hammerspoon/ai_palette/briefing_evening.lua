@@ -77,6 +77,7 @@ local function buildCards(tierA, tierB, activeById)
         id = id,
         repo = r.name,
         branch = r.branch,
+        path = r.path,
         dirty_count = r.dirty_count,
         dirty_files = r.dirty_files or {},
         merged = r.merged_to_main,
@@ -106,16 +107,25 @@ local function statusLabel(code)
 end
 
 -- 파일 목록 <ul> — expandable용
-local function renderDirtyFiles(files)
+-- repoPath: repo 절대경로 (nil이면 링크 없이 텍스트만)
+local function renderDirtyFiles(files, repoPath)
   if not files or #files == 0 then return "" end
   local parts = { '<ul class="file-list">' }
   for _, f in ipairs(files) do
     local touchedMark = f.touched_today and '<span class="touched-dot" title="오늘 변경">●</span>' or ''
+    local fileHtml
+    if repoPath and f.status ~= " D" and f.status ~= "D " then
+      local absPath = repoPath .. "/" .. f.path
+      fileHtml = string.format('<a href="hammerspoon://file?path=%s" class="file-path mono">%s</a>',
+        shared.escapeHtml(absPath), shared.escapeHtml(f.path))
+    else
+      fileHtml = string.format('<span class="file-path mono">%s</span>', shared.escapeHtml(f.path))
+    end
     parts[#parts + 1] = string.format(
-      '<li><span class="file-status">%s</span>%s <span class="file-path mono">%s</span></li>',
+      '<li><span class="file-status">%s</span>%s %s</li>',
       shared.escapeHtml(statusLabel(f.status)),
       touchedMark,
-      shared.escapeHtml(f.path)
+      fileHtml
     )
   end
   parts[#parts + 1] = '</ul>'
@@ -202,7 +212,7 @@ local function renderTierA(cards)
       mergeBadge,
       shared.escapeHtml(c.id),
       shared.escapeHtml(c.id),
-      renderDirtyFiles(c.dirty_files),
+      renderDirtyFiles(c.dirty_files, c.path),
       shared.escapeHtml(c.id),
       shared.escapeHtml(c.prefill)
     )
@@ -256,7 +266,7 @@ local function renderTierB(cards)
       shared.escapeHtml(c.id),
       noteBlock,
       shared.escapeHtml(c.id),
-      renderDirtyFiles(c.dirty_files)
+      renderDirtyFiles(c.dirty_files, c.path)
     )
   end
   return table.concat(parts, "\n")
@@ -295,9 +305,16 @@ local function renderLinear(issues)
         badges[#badges + 1] = '<span class="badge badge-warn">오늘 마감</span>'
       end
     end
+    local idHtml
+    if iss.url then
+      idHtml = string.format('<a href="%s" class="mono">%s</a>',
+        shared.escapeHtml(iss.url), shared.escapeHtml(iss.identifier or "?"))
+    else
+      idHtml = string.format('<span class="mono">%s</span>', shared.escapeHtml(iss.identifier or "?"))
+    end
     return string.format(
-      '<li class="item"><span class="mono">%s</span> %s %s</li>',
-      shared.escapeHtml(iss.identifier or "?"),
+      '<li class="item">%s %s %s</li>',
+      idHtml,
       shared.escapeHtml(iss.title or ""),
       table.concat(badges, " ")
     )

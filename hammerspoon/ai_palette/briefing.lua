@@ -138,9 +138,16 @@ local function renderLinear(issues)
         badges[#badges + 1] = '<span class="badge badge-warn">오늘 마감</span>'
       end
     end
+    local idHtml
+    if iss.url then
+      idHtml = string.format('<a href="%s" class="mono">%s</a>',
+        shared.escapeHtml(iss.url), shared.escapeHtml(iss.identifier or "?"))
+    else
+      idHtml = string.format('<span class="mono">%s</span>', shared.escapeHtml(iss.identifier or "?"))
+    end
     return string.format(
-      '<li class="item"><span class="mono">%s</span> %s %s</li>',
-      shared.escapeHtml(iss.identifier or "?"),
+      '<li class="item">%s %s %s</li>',
+      idHtml,
       shared.escapeHtml(iss.title or ""),
       table.concat(badges, " ")
     )
