@@ -7,6 +7,7 @@
 -- hammerspoon://review                        → 코드 리뷰
 -- hammerspoon://summarize                     → 페이지 요약
 -- hammerspoon://netreport                     → 네트워크 에러 리포트
+-- hammerspoon://jump?path=/abs/repo/path      → tmux 윈도우 전환/생성
 -- ============================================================
 local M = {}
 
@@ -113,6 +114,61 @@ local function handleBrief(params)
   end
 end
 
+-- ── jump 액션 ─────────────────────────────────────────────
+-- hammerspoon://jump?path=/abs/repo/path
+-- 해당 path를 cwd로 쓰는 tmux 윈도우가 있으면 전환, 없으면 새로 생성
+
+local function handleJump(params)
+  local path = params.path
+
+  if not path or path == "" then
+    print("[url_scheme] jump: path 파라미터 없음")
+    hs.alert.show("jump: path 파라미터 없음")
+    return
+  end
+
+  if not hs.fs.attributes(path) then
+    print("[url_scheme] jump: 경로 없음 — " .. path)
+    hs.alert.show("경로 없음:\n" .. path)
+    return
+  end
+
+  local ghostty = hs.application.get(GHOSTTY_BUNDLE)
+  if not ghostty then
+    print("[url_scheme] jump: Ghostty 안 떠있음")
+    hs.alert.show("Ghostty 안 떠있음")
+    return
+  end
+
+  ghostty:activate()
+
+  hs.timer.doAfter(0.15, function()
+    -- 해당 path를 cwd로 쓰는 윈도우 찾기
+    local findCmd = string.format(
+      "%s list-windows -F '#{window_index} #{pane_current_path}' 2>/dev/null | grep -m1 %s | awk '{print $1}'",
+      TMUX_BIN, shellQuote(path)
+    )
+    local idx = hs.execute(findCmd, true)
+    idx = idx and idx:gsub("%s+", "") or ""
+
+    local cmd
+    if idx ~= "" then
+      cmd = string.format("%s select-window -t :%s", TMUX_BIN, idx)
+      print("[url_scheme] jump: 기존 윈도우로 전환 — " .. idx)
+    else
+      cmd = string.format("%s new-window -c %s", TMUX_BIN, shellQuote(path))
+      print("[url_scheme] jump: 새 윈도우 생성 — " .. path)
+    end
+
+    hs.task.new("/bin/zsh", function(exitCode, _, stderr)
+      if exitCode ~= 0 then
+        print("[url_scheme] jump: 실패 — " .. (stderr or ""))
+        hs.alert.show("tmux jump 실패")
+      end
+    end, { "-c", cmd }):start()
+  end)
+end
+
 -- ── 기존 모듈 래퍼 ───────────────────────────────────────
 -- URL 스킴 + launcher 양쪽에서 호출 가능
 
@@ -127,6 +183,7 @@ local ACTIONS = {
   notify    = handleNotify,
   alert     = handleAlert,
   brief     = handleBrief,
+  jump      = handleJump,
   review    = function() handleReview() end,
   summarize = function() handleSummarize() end,
   netreport = function() handleNetreport() end,

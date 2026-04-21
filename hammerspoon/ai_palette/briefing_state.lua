@@ -107,6 +107,7 @@ function M.upsertEntry(entry)
   for i, existing in ipairs(active) do
     if existing.id == entry.id then
       existing.note = entry.note or existing.note
+      existing.path = entry.path or existing.path
       existing.linear_id = entry.linear_id or existing.linear_id
       existing.worktree_name = entry.worktree_name or existing.worktree_name
       existing.last_touched = now

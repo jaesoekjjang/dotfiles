@@ -580,6 +580,7 @@ local function handleSubmit(msg, context)
         id = c.id,
         repo = c.repo,
         branch = c.branch,
+        path = c.path,
         note = note,
       })
     end

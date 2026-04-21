@@ -75,17 +75,24 @@ local function renderStoppingPoints(entries)
   local parts = {}
   for _, e in ipairs(entries) do
     local ageLabel = daysAgoLabel(e.last_touched, nowEpoch)
+    local repoHtml
+    if e.path then
+      repoHtml = string.format('<a href="hammerspoon://jump?path=%s" class="repo-name">%s</a>',
+        shared.escapeHtml(e.path), shared.escapeHtml(e.repo or "?"))
+    else
+      repoHtml = string.format('<span class="repo-name">%s</span>', shared.escapeHtml(e.repo or "?"))
+    end
     parts[#parts + 1] = string.format([[
 <div class="repo-card">
   <div class="repo-head">
-    <span class="repo-name">%s</span>
+    %s
     <span class="repo-branch">%s</span>
     <span class="badge badge-info">%s</span>
   </div>
   <div class="saved-note">%s</div>
 </div>
     ]],
-      shared.escapeHtml(e.repo or "?"),
+      repoHtml,
       shared.escapeHtml(e.branch or ""),
       shared.escapeHtml(ageLabel),
       shared.escapeHtml(e.note or ""):gsub("\n", "<br>")
