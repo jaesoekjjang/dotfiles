@@ -205,34 +205,50 @@ function M.collectGitDetails(sinceEpoch, callback)
   end)
 end
 
--- Calendar: icalBuddy 우선, 실패 시 AppleScript fallback
--- icalBuddy는 ~/Library/Calendars 직접 파싱 (FDA 필요). ~0.5초
+-- Calendar: gcalcli 우선, 실패 시 AppleScript fallback
+-- gcalcli는 Google Calendar API 직접 호출 (OAuth). <1초, TCC 무관
 -- AppleScript는 Calendar.app IPC 경유 (Automation 권한). ~14초
 -- callback(events) — array of { time, title }
 
-local ICALBUDDY_BIN = "/opt/homebrew/bin/icalBuddy"
+local GCALCLI_BIN = "/opt/homebrew/bin/gcalcli"
 
--- icalBuddy 출력 파싱: "HH:MM - HH:MM | Event Title" 한 줄 per event
-local function parseIcalBuddyOutput(stdout)
+-- 탭 구분 문자열을 필드 배열로 쪼갬 (빈 필드 보존)
+-- "a\t\tb\t" → {"a", "", "b", ""}
+local function splitTab(s)
+  local parts = {}
+  for field in (s .. "\t"):gmatch("(.-)\t") do
+    parts[#parts + 1] = field
+  end
+  return parts
+end
+
+-- gcalcli --tsv 출력 파싱
+-- 헤더: start_date  start_time  end_date  end_time  title
+-- 시간 있는 이벤트: "2026-04-21\t10:00\t2026-04-21\t11:00\tTitle"
+-- 종일 이벤트:      "2026-04-21\t\t2026-04-22\t\tTitle"  (end_date는 exclusive)
+-- 오늘 이벤트만 필터 (start_date == today)
+local function parseGcalcliTsv(stdout)
   local events = {}
   if not stdout or stdout == "" then return events end
+  local today = os.date("%Y-%m-%d")
+
   for line in stdout:gmatch("[^\n]+") do
-    line = line:gsub("^%s+", ""):gsub("%s+$", "")
-    -- 포맷: "10:00 - 11:00 | Title"  (dash: -, en-dash –, em-dash —)
-    local h1, m1, h2, m2, title = line:match("^(%d+):(%d+)%s*[%-–—]%s*(%d+):(%d+)%s*|%s*(.+)$")
-    if h1 and title then
-      events[#events + 1] = {
-        time = string.format("%s:%s-%s:%s", h1, m1, h2, m2),
-        title = title,
-      }
+    if line:sub(1, 10) == "start_date" then
+      -- 헤더 skip
     else
-      -- fallback 파싱: "HH:MM Title" (종일/시작시각만)
-      local h, m, t = line:match("^(%d+):(%d+)%s+(.+)$")
-      if h and t then
-        events[#events + 1] = {
-          time = string.format("%s:%s", h, m),
-          title = t,
-        }
+      local parts = splitTab(line)
+      local start_date, start_time, _, end_time, title =
+        parts[1], parts[2], parts[3], parts[4], parts[5]
+      if start_date == today and title and title ~= "" then
+        local timeStr
+        if start_time and start_time ~= "" then
+          timeStr = (end_time and end_time ~= "")
+            and string.format("%s-%s", start_time, end_time)
+            or start_time
+        else
+          timeStr = "종일"
+        end
+        events[#events + 1] = { time = timeStr, title = title }
       end
     end
   end
@@ -284,52 +300,40 @@ local function collectCalendarViaAppleScript(callback)
   task:start()
 end
 
--- icalBuddy 가용성 캐시. Hammerspoon 프로세스 생명주기 동안 유지:
---   nil   → 아직 테스트 안 함 (첫 호출 때 시도)
---   true  → 이전 호출에서 성공 (계속 사용)
---   false → 이전 호출에서 실패 (권한 없음 등) → 이후 바로 AppleScript로
--- Hammerspoon 재시작하면 다시 nil로 리셋되어 재시도
-local icalBuddyUsable = nil
+-- gcalcli 가용성 캐시. Hammerspoon 프로세스 생명주기 동안 유지:
+--   nil   → 아직 테스트 안 함
+--   true  → 이전 호출 성공
+--   false → 이전 호출 실패 (OAuth 미설정 등) → 이후 바로 AppleScript
+local gcalcliUsable = nil
 
 function M.collectCalendar(callback)
-  -- 이미 실패한 적 있으면 바로 fallback (icalBuddy 프로브 5초 절약)
-  if icalBuddyUsable == false then
+  if gcalcliUsable == false then
     collectCalendarViaAppleScript(callback)
     return
   end
-  -- 바이너리 없음 → 영구 fallback
-  if not hs.fs.attributes(ICALBUDDY_BIN) then
-    icalBuddyUsable = false
+  if not hs.fs.attributes(GCALCLI_BIN) then
+    gcalcliUsable = false
     collectCalendarViaAppleScript(callback)
     return
   end
 
-  local task = hs.task.new(ICALBUDDY_BIN, function(ec, stdout, stderr)
-    local ok = (ec == 0)
-      and stdout and stdout ~= ""
-      and not stdout:match("^%s*error:")
-    if ok then
-      icalBuddyUsable = true
-      local events = parseIcalBuddyOutput(stdout)
+  -- 오늘 ~ 내일 범위 (gcalcli는 end 시각 exclusive라 오늘만 나옴)
+  local task = hs.task.new(GCALCLI_BIN, function(ec, stdout, stderr)
+    -- gcalcli는 오늘 이벤트 없으면 헤더만 출력하고 ec=0으로 종료.
+    -- 성공 조건: ec 0 (이벤트 없음도 정상)
+    if ec == 0 and stdout then
+      gcalcliUsable = true
+      local events = parseGcalcliTsv(stdout)
       table.sort(events, function(a, b) return a.time < b.time end)
       callback(events)
     else
-      icalBuddyUsable = false
+      gcalcliUsable = false
       if stderr and stderr ~= "" then
-        print("[calendar] icalBuddy unavailable (" .. stderr:sub(1, 80) .. "), using AppleScript for remainder of session")
+        print("[calendar] gcalcli unavailable (" .. stderr:sub(1, 100) .. "), falling back to AppleScript")
       end
       collectCalendarViaAppleScript(callback)
     end
-  end, {
-    "-nc", "-npn",
-    "-tf", "%H:%M",
-    "-df", "",
-    "-b", "",
-    "-ss", " | ",
-    "--includeEventProps", "datetimes,title",
-    "--propertyOrder", "datetimes,title",
-    "eventsToday",
-  })
+  end, { "agenda", "--tsv", "--nostarted", "today", "tomorrow" })
   task:start()
 end
 
