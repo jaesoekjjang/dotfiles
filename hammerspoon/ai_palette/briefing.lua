@@ -253,13 +253,28 @@ local function buildHtml(data, activeEntries)
     }
     .cal-title { color: #c9ccd1; }
 
-    /* 링크 클릭 affordance: cursor + underline on hover */
+    /* 링크 affordance (border-bottom 패턴으로 webkit 호환성 보장) */
+    /* 평소: 점선 아래선 + cursor pointer → hover: 실선 + 색 전환 */
     a, .link { cursor: pointer; }
-    a { color: #818cf8; text-decoration: none; }
-    a:hover, .link:hover { text-decoration: underline; }
-    a.repo-name, a.cal-title { color: inherit; }
-    a.repo-name:hover { color: #818cf8; }
-    a.cal-title:hover { color: #818cf8; }
+    a {
+      color: #818cf8;
+      text-decoration: none;
+      border-bottom: 1px dotted rgba(129, 140, 248, 0.6);
+      padding-bottom: 1px;
+    }
+    a:hover {
+      border-bottom-style: solid;
+      border-bottom-color: #818cf8;
+    }
+    /* inherit 색 쓰는 링크도 at-rest dotted 점선으로 식별 가능하게 */
+    a.repo-name, a.cal-title {
+      color: inherit;
+      border-bottom-color: rgba(129, 140, 248, 0.6);
+    }
+    a.repo-name:hover, a.cal-title:hover {
+      color: #818cf8;
+      border-bottom-color: #818cf8;
+    }
   ]]
 
   return string.format([[
