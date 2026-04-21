@@ -317,10 +317,9 @@ function M.collectCalendar(callback)
     return
   end
 
-  -- 오늘 ~ 내일 범위 (gcalcli는 end 시각 exclusive라 오늘만 나옴)
+  -- 오늘 ~ 내일 범위 (tomorrow까지 받은 뒤 Lua에서 today로 필터)
+  -- --nostarted 플래그는 안 씀: 종일 이벤트(00:00 시작)를 "이미 시작됨"으로 보고 필터해 누락시킴
   local task = hs.task.new(GCALCLI_BIN, function(ec, stdout, stderr)
-    -- gcalcli는 오늘 이벤트 없으면 헤더만 출력하고 ec=0으로 종료.
-    -- 성공 조건: ec 0 (이벤트 없음도 정상)
     if ec == 0 and stdout then
       gcalcliUsable = true
       local events = parseGcalcliTsv(stdout)
@@ -333,7 +332,7 @@ function M.collectCalendar(callback)
       end
       collectCalendarViaAppleScript(callback)
     end
-  end, { "agenda", "--tsv", "--nostarted", "today", "tomorrow" })
+  end, { "agenda", "--tsv", "today", "tomorrow" })
   task:start()
 end
 
