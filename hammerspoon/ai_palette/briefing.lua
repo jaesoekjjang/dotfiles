@@ -105,12 +105,20 @@ local function renderCalendar(events)
   if not events or #events == 0 then
     return '<div class="empty">오늘 일정 없음</div>'
   end
-  local parts = { '<ul style="list-style:none;padding:0;">' }
+  local parts = { '<ul class="cal-list">' }
   for _, evt in ipairs(events) do
+    local titleHtml
+    if evt.url then
+      titleHtml = string.format('<a href="%s" class="cal-title link">%s</a>',
+        shared.escapeHtml(evt.url), shared.escapeHtml(evt.title))
+    else
+      titleHtml = string.format('<span class="cal-title">%s</span>',
+        shared.escapeHtml(evt.title))
+    end
     parts[#parts + 1] = string.format(
-      '<li class="item"><span class="mono" style="min-width:110px;display:inline-block;color:#818cf8;">%s</span>%s</li>',
+      '<li class="cal-item"><span class="cal-time mono">%s</span>%s</li>',
       shared.escapeHtml(evt.time),
-      shared.escapeHtml(evt.title)
+      titleHtml
     )
   end
   parts[#parts + 1] = '</ul>'
@@ -177,6 +185,7 @@ local function renderLinear(issues)
 end
 
 -- 어제 git 활동: commits_since가 있는 repo만 표시
+-- repo name 클릭 → hammerspoon://jump?path=... (URL 핸들러가 nvim 등으로 열기)
 local function renderYesterdayGit(repos)
   local active = {}
   for _, r in ipairs(repos or {}) do
@@ -191,9 +200,16 @@ local function renderYesterdayGit(repos)
 
   local parts = {}
   for _, r in ipairs(active) do
+    local nameHtml
+    if r.path then
+      nameHtml = string.format('<a href="hammerspoon://jump?path=%s" class="repo-name link">%s</a>',
+        shared.escapeHtml(r.path), shared.escapeHtml(r.name))
+    else
+      nameHtml = string.format('<span class="repo-name">%s</span>', shared.escapeHtml(r.name))
+    end
     parts[#parts + 1] = string.format(
-      '<div class="repo-card"><div class="repo-head"><span class="repo-name">%s</span><span class="repo-branch">%s</span></div>',
-      shared.escapeHtml(r.name), shared.escapeHtml(r.branch or "")
+      '<div class="repo-card"><div class="repo-head">%s<span class="repo-branch">%s</span></div>',
+      nameHtml, shared.escapeHtml(r.branch or "")
     )
     for _, commit in ipairs(r.commits_since) do
       local hash, msg = commit:match("^(%S+)%s(.+)")
@@ -224,6 +240,26 @@ local function buildHtml(data, activeEntries)
       font-size: 11px; color: #6b7280; line-height: 1.8;
     }
     .footer code { background: #14151a; padding: 1px 6px; border-radius: 3px; color: #818cf8; }
+
+    /* Calendar 리스트 */
+    .cal-list { list-style: none; padding: 0; margin: 0; }
+    .cal-item {
+      display: flex; align-items: baseline; gap: 12px;
+      padding: 4px 0; font-size: 13px;
+    }
+    .cal-time {
+      color: #818cf8; font-size: 12px; flex-shrink: 0;
+      min-width: 90px;
+    }
+    .cal-title { color: #c9ccd1; }
+
+    /* 링크 클릭 affordance: cursor + underline on hover */
+    a, .link { cursor: pointer; }
+    a { color: #818cf8; text-decoration: none; }
+    a:hover, .link:hover { text-decoration: underline; }
+    a.repo-name, a.cal-title { color: inherit; }
+    a.repo-name:hover { color: #818cf8; }
+    a.cal-title:hover { color: #818cf8; }
   ]]
 
   return string.format([[

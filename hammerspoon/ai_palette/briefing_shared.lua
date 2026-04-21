@@ -222,10 +222,8 @@ local function splitTab(s)
   return parts
 end
 
--- gcalcli --tsv 출력 파싱
--- 헤더: start_date  start_time  end_date  end_time  title
--- 시간 있는 이벤트: "2026-04-21\t10:00\t2026-04-21\t11:00\tTitle"
--- 종일 이벤트:      "2026-04-21\t\t2026-04-22\t\tTitle"  (end_date는 exclusive)
+-- gcalcli --tsv --details url 출력 파싱
+-- 헤더: start_date  start_time  end_date  end_time  html_link  hangout_link  title
 -- 오늘 이벤트만 필터 (start_date == today)
 local function parseGcalcliTsv(stdout)
   local events = {}
@@ -237,8 +235,8 @@ local function parseGcalcliTsv(stdout)
       -- 헤더 skip
     else
       local parts = splitTab(line)
-      local start_date, start_time, _, end_time, title =
-        parts[1], parts[2], parts[3], parts[4], parts[5]
+      local start_date, start_time, _, end_time, html_link, _, title =
+        parts[1], parts[2], parts[3], parts[4], parts[5], parts[6], parts[7]
       if start_date == today and title and title ~= "" then
         local timeStr
         if start_time and start_time ~= "" then
@@ -248,7 +246,11 @@ local function parseGcalcliTsv(stdout)
         else
           timeStr = "종일"
         end
-        events[#events + 1] = { time = timeStr, title = title }
+        events[#events + 1] = {
+          time = timeStr,
+          title = title,
+          url = (html_link and html_link ~= "") and html_link or nil,
+        }
       end
     end
   end
@@ -332,7 +334,7 @@ function M.collectCalendar(callback)
       end
       collectCalendarViaAppleScript(callback)
     end
-  end, { "agenda", "--tsv", "today", "tomorrow" })
+  end, { "agenda", "--tsv", "--details", "url", "today", "tomorrow" })
   task:start()
 end
 
