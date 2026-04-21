@@ -3,6 +3,10 @@
 -- hammerspoon://file?path=/abs/path&line=42   → Ghostty + nvim
 -- hammerspoon://notify?title=제목&msg=내용     → macOS 알림
 -- hammerspoon://alert?msg=텍스트&duration=3    → 화면 오버레이
+-- hammerspoon://brief?type=morning|evening    → 브리핑 실행
+-- hammerspoon://review                        → 코드 리뷰
+-- hammerspoon://summarize                     → 페이지 요약
+-- hammerspoon://netreport                     → 네트워크 에러 리포트
 -- ============================================================
 local M = {}
 
@@ -94,12 +98,38 @@ local function handleAlert(params)
   hs.alert.show(msg, duration)
 end
 
+-- ── brief 액션 ────────────────────────────────────────────
+-- hammerspoon://brief?type=morning|evening
+
+local function handleBrief(params)
+  local t = params.type or "morning"
+  if t == "morning" then
+    require("ai_palette.briefing").run()
+  elseif t == "evening" then
+    require("ai_palette.briefing_evening").run()
+  else
+    print("[url_scheme] brief: unknown type — " .. t)
+    hs.alert.show("brief: unknown type — " .. t)
+  end
+end
+
+-- ── 기존 모듈 래퍼 ───────────────────────────────────────
+-- URL 스킴 + launcher 양쪽에서 호출 가능
+
+local function handleReview()    require("ai_palette.review").run() end
+local function handleSummarize() require("ai_palette.summarize").run() end
+local function handleNetreport() require("ai_palette.netreport").run() end
+
 -- ── 액션 라우터 ───────────────────────────────────────────
 
 local ACTIONS = {
-  file   = handleFile,
-  notify = handleNotify,
-  alert  = handleAlert,
+  file      = handleFile,
+  notify    = handleNotify,
+  alert     = handleAlert,
+  brief     = handleBrief,
+  review    = function() handleReview() end,
+  summarize = function() handleSummarize() end,
+  netreport = function() handleNetreport() end,
 }
 
 function M.start()
@@ -110,6 +140,19 @@ function M.start()
     end)
   end
 end
+
+-- ── Launcher 항목 (chooser용) ─────────────────────────────
+
+M.LAUNCHER_ITEMS = {
+  { text = "Code Review",          subText = "PR/MR diff → Claude 리뷰",       fn = handleReview },
+  { text = "Page Summarize",       subText = "브라우저 페이지 요약 + 번역",      fn = handleSummarize },
+  { text = "Network Error Report", subText = "cURL → 네트워크 에러 리포트",      fn = handleNetreport },
+  { text = "Morning Briefing",     subText = "하루 시작 브리핑 수동 실행",        fn = function() handleBrief({ type = "morning" }) end },
+  { text = "Evening Briefing",     subText = "저녁 마무리 브리핑 수동 실행",      fn = function() handleBrief({ type = "evening" }) end },
+  { text = "Workmux Refresh",      subText = "메뉴바 agent 현황 새로고침",        fn = function() require("workmux.menubar").refresh() end },
+  { text = "Workmux Start Issue",  subText = "Linear 이슈 → worktree 시작",      fn = function() require("workmux.start_issue").run() end },
+  { text = "Reload Config",        subText = "Hammerspoon 설정 리로드",           fn = hs.reload },
+}
 
 -- ── webview 헬퍼 ──────────────────────────────────────────
 -- webview에서 hammerspoon:// 링크 클릭을 hs.urlevent로 전달
