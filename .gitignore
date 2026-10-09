@@ -2,6 +2,7 @@
 .DS_Store
 __pycache__/
 *.pyc
+/tuios/picker/tuios-picker
 
 # Machine-local Claude approvals
 **/.claude/settings.local.json

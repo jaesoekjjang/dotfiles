@@ -30,7 +30,7 @@ def version(command):
         return ""
 
 
-commands = "git zsh bat eza rg fd fzf yazi zoxide atool 7zz tmux tuios workmux fnm uv python3 node npm jq nvim tree-sitter gh glab".split()
+commands = "git zsh bat eza rg fd fzf yazi zoxide atool 7zz tmux tuios workmux fnm uv python3 go node npm jq nvim tree-sitter gh glab".split()
 if not args.no_agents:
     commands += ["codex", "claude"]
 for command in commands:
