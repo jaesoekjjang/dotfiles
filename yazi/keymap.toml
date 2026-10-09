@@ -28,7 +28,7 @@ prepend_keymap = [
 
   { on = ["o", "v"], run = 'shell --block -- edit_files -- %s', desc = "Open with editor" },
   { on = ["o", "c"], run = 'shell --orphan -- code %s', desc = "Open with VSCode" },
-  { on = ["o", "b"], run = 'shell --orphan -- browser_app="${BROWSER:-Google Chrome}"; open -a "${browser_app#open -a }" %s', desc = "Open in browser" },
+  { on = ["o", "b"], run = "shell --orphan -- sh -c 'exec ${BROWSER:-open} \"$@\"' -- %s", desc = "Open in browser" },
   { on = ["o", "f"], run = 'shell "open -R \"$@\"" --confirm', desc = "Open in Finder" },
   { on = ["o", "k"], run = 'shell --block -- bash ~/.config/yazi/scripts/navigate.sh ghostty %h', desc = "Open hovered directory in Ghostty" },
   { on = ["o", "t", "t"], run = 'shell --block -- bash ~/.config/yazi/scripts/navigate.sh tmux-window %h', desc = "Open tmux window in current session" },
