@@ -88,6 +88,15 @@ func New() *Service {
 // Stop in-flight CLI captures when the UI exits, including obsolete previews.
 func (s *Service) Close() { s.cancel() }
 
+// Native popup focus does not necessarily switch out of window management
+// mode. Enter terminal mode before drawing, so the first typed key reaches us.
+func (s *Service) PreparePopup() error {
+	if os.Getenv("TUIOS_PICKER_POPUP") != "1" || s.Popup == "" || s.Target == "" {
+		return nil
+	}
+	return s.command(nil, "run-command", "TerminalMode", "-s", s.Target)
+}
+
 func Clean(value string) string {
 	return strings.Join(strings.Fields(strings.Map(func(r rune) rune {
 		if unicode.IsPrint(r) || unicode.IsSpace(r) {

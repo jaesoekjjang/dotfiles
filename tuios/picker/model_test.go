@@ -254,6 +254,50 @@ func TestSelectionQueryAndFoldSurviveMutation(t *testing.T) {
 		t.Fatalf("nearest remaining position: %s", m.selectedID())
 	}
 }
+func TestChildRenamePreservesQuerySelectionAndTree(t *testing.T) {
+	for _, kind := range []string{"workspace", "pane"} {
+		t.Run(kind, func(t *testing.T) {
+			mode, parentKind := "sessions", "session"
+			if kind == "pane" {
+				mode, parentKind = "workspaces", "workspace"
+			}
+			data := tuios.Snapshot{Current: "parent", Rows: []tuios.Row{
+				{ID: "parent", Kind: parentKind, Label: "project", Current: true},
+				{ID: "child", Parent: "parent", Kind: kind, Label: "terminal", Number: 2},
+			}}
+			f := &fakeController{snapshot: &data}
+			m := newModel(f, mode)
+			m.Update(loadedMsg{snapshot: data})
+			m.search.SetValue("term")
+			m.refilter("child", false)
+			m.Update(ctrl('r'))
+			if m.modal != "rename" || m.modalRow.ID != "child" || m.prompt.Value() != "terminal" {
+				t.Fatal("Ctrl-r must edit the selected child's name")
+			}
+			m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+			if len(f.actions) != 0 || !m.search.Focused() {
+				t.Fatal("cancel must restore search without renaming")
+			}
+			m.Update(ctrl('r'))
+			m.prompt.SetValue("terminal 리뷰")
+			_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+			msg := cmd()
+			data.Rows[1].Label = "terminal 리뷰"
+			_, reload := m.Update(msg)
+			m.Update(reload())
+			if !reflect.DeepEqual(f.actions, []string{"rename:child:terminal 리뷰"}) {
+				t.Fatal(f.actions)
+			}
+			if m.search.Value() != "term" || m.selectedID() != "child" || !m.expanded["parent"] || !m.search.Focused() {
+				t.Fatal("rename must preserve the query, child selection, tree and input focus")
+			}
+			if m.rows[0].Label != "project" || m.visible[0].Label != "terminal 리뷰" {
+				t.Fatal("only the child's name should change", m.rows)
+			}
+		})
+	}
+}
+
 func TestWorkspaceCreationPromptsForNameAndCanCancel(t *testing.T) {
 	m := ready()
 	f := m.service.(*fakeController)

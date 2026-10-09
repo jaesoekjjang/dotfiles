@@ -90,7 +90,7 @@ func (s *Service) Snapshot(mode string) (Snapshot, error) {
 				return snapshot, err
 			}
 			for _, tab := range ordered(tabs) {
-				if visible(tab) {
+				if tab.Count > 0 || w.ID == current && visible(tab) {
 					snapshot.Rows = append(snapshot.Rows, Row{
 						ID: fmt.Sprintf("ws:%s:%d", w.ID, tab.Number), Parent: w.ID, Kind: "workspace", Label: first(tab.Name, "이름 없음"),
 						Session: item.Name, SessionID: w.ID, Number: tab.Number, Panes: tab.Count, Current: w.ID == current && tab.Current})
@@ -232,11 +232,14 @@ func (s *Service) Act(action string, row Row, name string) (ActionResult, error)
 		}
 		return ActionResult{Exit: true}, s.call("workspace.focus", map[string]any{"workspace_id": row.SessionID}, nil)
 	case "rename":
-		if row.Parent != "" || strings.TrimSpace(name) == "" {
+		if strings.TrimSpace(name) == "" {
 			return ActionResult{}, nil
 		}
 		if row.Kind == "session" {
 			return ActionResult{}, s.call("workspace.rename", map[string]any{"workspace_id": row.ID, "label": name}, nil)
+		}
+		if row.Kind == "pane" {
+			return ActionResult{}, s.call("pane.rename", map[string]any{"pane_id": strings.SplitN(row.ID, ":", 3)[2], "label": name}, nil)
 		}
 		// set-workspace-name is one of the CLI verbs without a --json flag.
 		ctx, cancel := context.WithTimeout(s.ctx, 20*time.Second)

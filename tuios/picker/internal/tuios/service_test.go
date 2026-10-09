@@ -127,6 +127,21 @@ func TestSnapshotOrderingPopupExclusionAndCurrent(t *testing.T) {
 		}
 	}
 }
+func TestSessionSnapshotOmitsClosedInactiveWorkspace(t *testing.T) {
+	h := fixture(t)
+	h.tabs["destination"] = `{"workspaces":[{"workspace":1,"name":"ws1","window_count":0},{"workspace":2,"name":"","window_count":0,"current":true},{"workspace":3,"name":"ws3","window_count":0}]}`
+	data, err := h.s.Snapshot("sessions")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.ContainsFunc(data.Rows, func(r Row) bool { return r.ID == "wbb" }) {
+		t.Fatal("empty session must remain available")
+	}
+	if slices.ContainsFunc(data.Rows, func(r Row) bool { return r.Parent == "wbb" }) {
+		t.Fatal("closing the last workspace must not leave an empty child", data.Rows)
+	}
+}
+
 func TestPreviewSelectsLastRealPaneAndExplicitPane(t *testing.T) {
 	h := fixture(t)
 	for _, r := range []Row{
@@ -272,11 +287,6 @@ func TestRenameIdentityCreateCwdAndWorkspaceCycle(t *testing.T) {
 	if _, err := h.s.Act("rename", Row{ID: "2", Kind: "workspace", Number: 2, Session: "source"}, "New name"); err != nil {
 		t.Fatal(err)
 	}
-	n := len(h.events)
-	h.s.Act("rename", Row{ID: "ws:waa:1", Parent: "waa", Kind: "workspace"}, "ignored")
-	if len(h.events) != n {
-		t.Fatal("child rename")
-	}
 	result, err := h.s.Act("create-session", Row{}, "New")
 	if err != nil || result.Exit || result.Selected != "wcc" {
 		t.Fatal(result, err)
@@ -289,6 +299,27 @@ func TestRenameIdentityCreateCwdAndWorkspaceCycle(t *testing.T) {
 	}
 	if !has(h.events, "select-workspace 2 -s source") {
 		t.Fatal("respect explicit order, loop, skip unnamed empty")
+	}
+}
+
+func TestRenameChildTargetsWorkspaceSessionAndPaneIdentity(t *testing.T) {
+	h := fixture(t)
+	result, err := h.s.Act("rename", Row{ID: "ws:wbb:1", Parent: "wbb", Kind: "workspace", Number: 1, Session: "destination"}, "리뷰 notes")
+	if err != nil || result.Exit || result.Selected != "" {
+		t.Fatal(result, err)
+	}
+	if !has(h.events, "tuios set-workspace-name 1 리뷰 notes -s destination") {
+		t.Fatal("workspace rename must target its own session", h.events)
+	}
+	result, err = h.s.Act("rename", Row{ID: "pane:2:log", Parent: "2", Kind: "pane", Number: 2, Session: "source"}, "서버 로그")
+	if err != nil || result.Exit || result.Selected != "" {
+		t.Fatal(result, err)
+	}
+	if !has(h.events, `pane.rename {"label":"서버 로그","pane_id":"log"}`) {
+		t.Fatal("pane rename must address the selected pane", h.events)
+	}
+	if len(h.events) != 2 {
+		t.Fatal("rename must not switch, focus or close anything", h.events)
 	}
 }
 func TestWorkspaceCreationPassesNameToLauncher(t *testing.T) {
@@ -304,6 +335,21 @@ func TestWorkspaceCreationPassesNameToLauncher(t *testing.T) {
 	exit, err := h.s.Act("create-workspace", Row{}, "review notes")
 	if err != nil || exit.Exit || exit.Selected != "3" {
 		t.Fatalf("%v %v", exit, err)
+	}
+}
+
+func TestPopupPreparesTerminalInput(t *testing.T) {
+	h := fixture(t)
+	t.Setenv("TUIOS_PICKER_POPUP", "")
+	if err := h.s.PreparePopup(); err != nil || len(h.events) != 0 {
+		t.Fatalf("manual picker must preserve its host: %v %v", err, h.events)
+	}
+	t.Setenv("TUIOS_PICKER_POPUP", "1")
+	if err := h.s.PreparePopup(); err != nil {
+		t.Fatal(err)
+	}
+	if !has(h.events, "tuios run-command TerminalMode -s source --json") {
+		t.Fatalf("popup must accept typing regardless of the previous mode: %v", h.events)
 	}
 }
 

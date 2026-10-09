@@ -41,22 +41,27 @@ initialize_layout() {
   rm -f -- "$pending"
 }
 
-new_workspace() {
-  local target=${TUIOS_SESSION:-} workspace_id workspaces pane_cwd=${TUIOS_ACTIVE_PANE_CWD:-$PWD} workspace_name=${1:-} focus_mode=${2:-}
-  [[ -n "$target" ]] || { print -u2 'TUIOS 안에서 실행하세요.'; return 1; }
+next_workspace_slot() {
+  local target=$1 workspaces
   workspaces=$(tuios list-workspaces -s "$target" --json) || return 1
   # Append after occupied slots; reuse earlier holes only when the tail is full.
-  workspace_id=$(print -r -- "$workspaces" |
+  print -r -- "$workspaces" |
     jq -er '
       def available: .current != true and .window_count == 0 and (.name // "") == "";
       ([.workspaces[] | select(available | not) | .workspace] | max // 0) as $last
       | [.workspaces[] | select(available)]
       | sort_by(.workspace)
       | ([.[] | select(.workspace > $last)][0].workspace // .[0].workspace // empty)
-    ') || {
+    ' || {
     print -u2 '추가할 빈 workspace가 없습니다 (최대 9개).'
     return 1
   }
+}
+
+new_workspace() {
+  local target=${TUIOS_SESSION:-} workspace_id pane_cwd=${TUIOS_ACTIVE_PANE_CWD:-$PWD} workspace_name=${1:-} focus_mode=${2:-}
+  [[ -n "$target" ]] || { print -u2 'TUIOS 안에서 실행하세요.'; return 1; }
+  workspace_id=$(next_workspace_slot "$target") || return 1
   tuios new-window -s "$target" shell --workspace "$workspace_id" --cwd "$pane_cwd" --no-focus -- "$script" app /bin/zsh >/dev/null || return 1
   if [[ -n "$workspace_name" ]]; then
     tuios set-workspace-name -s "$target" -- "$workspace_id" "$workspace_name" >/dev/null || return 1
@@ -66,6 +71,13 @@ new_workspace() {
     return 0
   fi
   tuios select-workspace "$workspace_id" -s "$target" >/dev/null
+}
+
+break_pane() {
+  local target=${TUIOS_SESSION:-} pane_id=${TUIOS_ACTIVE_PANE_ID:-${TUIOS_WINDOW_ID:-}} workspace_id
+  [[ -n "$target" && -n "$pane_id" ]] || { print -u2 'TUIOS pane 안에서 실행하세요.'; return 1; }
+  workspace_id=$(next_workspace_slot "$target") || return 1
+  tuios move-window "$workspace_id" -s "$target" -w "$pane_id" --follow >/dev/null
 }
 
 project_picker() {
@@ -118,6 +130,7 @@ case "${1:-}" in
   _initialize-sidebar) exec python3 "${script:h}/tuios-sidebar" ;;
   _initialize-layout) initialize_layout; exit ;;
   new-workspace) new_workspace "${2:-}" "${3:-}"; exit ;;
+  break-pane) break_pane; exit ;;
   project) open_project; exit ;;
   menu) menu; exit ;;
   help|--help|-h)

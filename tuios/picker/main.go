@@ -58,6 +58,9 @@ func run(args []string) error {
 			m.search.Blur()
 			m.showPreview = false
 		}
+		if err := s.PreparePopup(); err != nil {
+			return err
+		}
 		_, err := tea.NewProgram(m).Run()
 		return err
 	default:

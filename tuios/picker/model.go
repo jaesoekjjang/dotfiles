@@ -370,7 +370,7 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.openModal("close", row)
 			}
 		case "ctrl+r":
-			if row, ok := m.selected(); ok && row.Parent == "" {
+			if row, ok := m.selected(); ok {
 				return m, m.openModal("rename", row)
 			}
 		case "ctrl+a":

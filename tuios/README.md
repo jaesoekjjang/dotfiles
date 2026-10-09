@@ -5,7 +5,7 @@
 Ghostty의 tmux 밖 새 창에서 `wt`를 실행한다. 현재 Git 프로젝트의 Codex + Neovim + shell 세션을 열고,
 같은 경로에서 다시 실행하면 기존 세션에 붙는다. `wt /path/to/repo`로 경로를 지정할 수 있다.
 새 세션은 workspace 1 `dev`에 agent 왼쪽 / editor 오른쪽 2분할로 배치하고 agent에 포커스를 둔다.
-workspace 2 `terminal`에는 shell 하나를 전체 화면으로 연다. `Ctrl-b 1/2`로 이동한다.
+workspace 2 `terminal`에는 shell 하나를 전체 화면으로 연다. `Ctrl-b n/v` 또는 `Ctrl-b w`로 workspace를 이동한다.
 배치는 `after-attach` hook이 실제 화면 연결 후 한 번만 적용한다. 미리 생성한 세션으로
 `Ctrl-b s`에서 이동할 때도 적용되며, 이후 기존 세션을 재사용할 때는 배치와 포커스를 바꾸지 않는다.
 Git 저장소 밖에서는 기존 프로젝트 캐시를 사용하는 picker가 열린다.
@@ -36,9 +36,11 @@ TUIOS의 대화형 zsh에서도 이 값을 제거한다. 기존 Codex 프로세�
 | `Ctrl-b n` / `Ctrl-b v` | 다음 / 이전 workspace (빈 무명 workspace는 건너뛰고 순환) |
 | `Ctrl-b Tab` / `Ctrl-b Shift-Tab` | 다음 / 이전 pane |
 | `Ctrl-b c` | 빈 workspace에 현재 pane 경로의 shell을 열고 이동 |
+| `Ctrl-b !` | 현재 pane을 새 workspace로 분리하고 함께 이동 |
 | `Ctrl-b t n` | 현재 workspace에 새 pane |
 | `Ctrl-b W` | workspace 관리 메뉴 (이동·이름 변경) |
-| `Ctrl-b 1` … `9` | 해당 workspace로 이동 |
+| `Ctrl-b 1` … `9` | 현재 workspace의 1~9번째 pane 선택 |
+| `Ctrl-b W` → `1` … `9` | 해당 번호의 workspace로 이동 |
 | `Ctrl-b $` | 현재 session 이름 변경 (Enter: 저장, Esc: 취소) |
 | `Ctrl-b S` | scrollback browser |
 | `Ctrl-b ?` | 도움말 |
@@ -51,7 +53,7 @@ TUIOS의 대화형 zsh에서도 이 값을 제거한다. 기존 Codex 프로세�
 | `Ctrl-b B` | spotlight 켜기·끄기 (창 관리 모드에서는 `B`) |
 | `Ctrl-b i` | agent Inbox |
 | `Ctrl-b g` | Lazygit popup (`q`로 닫기) |
-| `Ctrl-b F` | 화면의 URL·경로·해시 등에 힌트 표시 → 라벨 입력으로 복사 |
+| `Ctrl-b f` | 화면의 URL·경로·해시 등에 힌트 표시 → 라벨 입력으로 복사 |
 | `Ctrl-b /` | 전체 session의 pane 검색 |
 | `Ctrl-b y` | Yazi popup (`q`로 닫기) |
 | `Ctrl-b G` | CodeDiff 변경 리뷰 popup (`gd`, 변경이 없으면 HEAD) |
@@ -59,7 +61,7 @@ TUIOS의 대화형 zsh에서도 이 값을 제거한다. 기존 Codex 프로세�
 | `Ctrl-b I` | 이미지 붙여넣기 (기존 `Ctrl-b V`) |
 | `Ctrl-b Ctrl-t` | shell popup (`exit`로 닫기) |
 | `Ctrl-Shift-p` | 명령 팔레트 |
-| `Ctrl-b d` | detach; 프로그램은 계속 실행 |
+| `Ctrl-b Ctrl-d` | detach; 프로그램은 계속 실행 |
 
 `s`·`w` picker의 `Ctrl-x`도 같은 종료 동작을 사용한다. 현재 대상을 종료하면 picker는 닫히고,
 다른 대상을 종료하면 목록에 남아 계속 선택할 수 있다.
@@ -73,6 +75,7 @@ CodeDiff popup은 pane 영역의 100%를 채운다. 상단바·sidebar와 popup 
 현재 변경·선택한 커밋·이력을 같은 리뷰 탭에서 전환한다. `q`로 Neovim도 종료한다.
 
 애니메이션을 끄고, Neovim의 `Ctrl-p`를 보존한다. Option+숫자와 일부 Option+문자는 AeroSpace에 맡긴다.
+`Option-Esc`의 창 관리 모드 전환은 해제했다. 빠른 `Esc Esc`와 같은 입력으로 해석될 수 있어 Codex 같은 pane 내부 앱의 Esc를 가로채기 때문이다. 창 관리 모드는 `Ctrl-b Esc`로 들어간다.
 `Ctrl-b p` → 프로젝트 선택으로 세션을 준비한 뒤 `Ctrl-b s`에서 해당 세션으로 이동한다.
 기존 메뉴는 `tuios-trial menu`로 열 수 있다. editor/agent/review 항목은 새 pane을 만든다.
 기존 세션이 있으면 다시 만들지 않는다. 프로젝트 목록은 `w project`와 같은 캐시를 사용한다.
@@ -91,14 +94,15 @@ keybind manager는 `Ctrl-b .`로 옮기고 `Ctrl-b j`의 알림 이동은 해제
 `Ctrl-b ?`는 도움말이고 `Ctrl-b .`는 실제 키 설정·충돌을 확인하고 편집하는 keybind manager다.
 TUIOS 0.8.5의 which-key는 기본 키 표를 표시하므로 커스텀 키와 다를 수 있다.
 키 바인딩 변경은 `tuios config apply`만으로 반영되지 않을 수 있다. 현재 세션에서
-`Ctrl-b d`로 detach한 뒤 `tuios attach <세션 이름>`으로 다시 연결하면 키 설정을 새로 읽는다.
+`Ctrl-b Ctrl-d`로 detach한 뒤 `tuios attach <세션 이름>`으로 다시 연결하면 키 설정을 새로 읽는다.
 pane과 실행 중인 프로그램은 유지된다. 실제 등록은 `Ctrl-b .` 또는
 `tuios keybinds explain V`·`tuios keybinds explain u`로 확인한다.
 `Ctrl-b s/w`는 Go / Bubble Tea popup을 사용하고, 현재 session/workspace를 표시하며 시작 커서를 둔다.
 `s`는 현재 client의 최근 방문 순서로 session을 표시한다. 방문 이력이 없으면 데몬의 최근 활동 순서를 쓴다.
 `s`에서도 `Tab`/`Ctrl-o`로 session 아래 workspace를 펼치거나 접는다. 기본은 전체 펼침이다.
 `Ctrl-n/p`는 workspace 포함 한 줄씩, `Ctrl-j/k`는 session 행 단위로 이동한다.
-workspace 행에서 Enter를 누르면 해당 session의 그 workspace로 이동한다. 하위 workspace에서 `Ctrl-x`는 그 workspace의 종료 확인창을 연다. 이름 변경은 `w`에서 한다.
+workspace 행에서 Enter를 누르면 해당 session의 그 workspace로 이동한다. 하위 workspace에서 `Ctrl-r`은 그 workspace의 이름을 바꾸고, `Ctrl-x`는 그 workspace의 종료 확인창을 연다.
+다른 session 아래에는 pane이 있는 workspace만 표시한다. 마지막 workspace를 종료한 뒤 TUIOS가 유지하는 빈 슬롯은 숨기고 session 행은 남긴다. 현재 session의 빈 workspace는 `w`에서 확인·관리할 수 있다.
 `s`는 세션 표시 이름과 workspace 이름·번호를 함께 검색한다. `anchorbase terminal`, `anchorbaseterminal`, `dotfiles terminal`로 같은 이름의 workspace를 구분해 바로 이동할 수 있다.
 검색 중에는 접힌 세션의 workspace도 찾으며 `anchorbase › 2 terminal`처럼 소속을 표시한다. 검색을 지우면 원래 펼침 상태로 돌아온다. 선택한 workspace의 내용만 미리 볼 수 있다.
 workspace만 검색된 결과에서도 `Ctrl-j/k`로 다른 세션의 결과로 이동할 수 있다.
@@ -107,7 +111,7 @@ workspace만 검색된 결과에서도 `Ctrl-j/k`로 다른 세션의 결과로 
 pane 목록은 기본으로 모두 펼쳐져 있다. `Tab` 또는 `Ctrl-o`로 선택한 workspace의 pane 목록을 펼치거나 접는다. 하나의 UI 안에서 목록만 갱신한다. pane 행에서 `Tab` 또는 `Ctrl-o`를 누르면 부모 workspace로 접힌다.
 `Ctrl-n/p`는 pane 포함 한 줄씩, `Ctrl-j/k`는 다음/이전 workspace 행으로 이동한다. 검색 중에는 검색 결과에 있는 workspace만 이동한다.
 workspace에서 `Enter`는 workspace로, pane에서 `Enter`는 해당 pane으로 바로 이동한다.
-pane 행에서 `Ctrl-x`는 그 pane만 종료한다. 확인창에서 취소할 수 있으며 부모 workspace는 종료하지 않는다. pane 이름 변경은 `Ctrl-b r`을 쓴다. 검색은 펼쳐진 pane 이름도 포함한다.
+pane 행에서 `Ctrl-r`은 그 pane의 이름을 바꾸고, `Ctrl-x`는 그 pane만 종료한다. 확인창에서 취소할 수 있으며 부모 workspace는 종료하지 않는다. picker 밖에서는 `Ctrl-b r`로 현재 pane 이름을 바꾼다. 검색은 펼쳐진 pane 이름도 포함한다.
 `s`·`w` popup은 화면의 95% × 90% 크기를 사용한다.
 Navigator처럼 왼쪽 목록 40%, 오른쪽 미리보기 60%로 나누고 검색은 위쪽, 키 안내는 두 패널 아래의 공통 footer에 둔다.
 한 줄 안내가 들어가지 않는 좁은 창에서는 footer를 여러 줄로 나눈다.
@@ -126,7 +130,7 @@ pane 수는 목록과 미리보기에서 생략하고 종료 확인에서 표시
 session은 표시 이름, workspace는 이름과 번호로 검색한다. 경로와 pane 수는 검색 대상에서 제외한다.
 검색어를 입력하면 가장 잘 맞는 첫 결과에 커서를 둔다.
 Enter는 결과로 이동만 하고, 결과가 없으면 창을 유지한다.
-`Ctrl-r`은 상위 행의 이름을 변경하고, `Ctrl-x`는 선택한 행 자체(session/workspace/pane)의 종료 확인창을 연다.
+`Ctrl-r`은 선택한 행 자체의 이름을 변경한다. `s`에서는 session·workspace, `w`에서는 workspace·pane에 적용한다. `Ctrl-x`는 선택한 행 자체(session/workspace/pane)의 종료 확인창을 연다.
 확인창은 취소가 기본값이며 `y`로 종료하고 Enter·`n`·Esc로 취소한다.
 이름 변경 후 검색어와 선택 대상을 유지한다. 이름이 검색 조건에서 벗어나면 가까운 검색 결과를 선택한다.
 다른 대상을 종료한 뒤에도 검색어를 유지하며 가까운 항목으로 이동한다.
@@ -139,6 +143,7 @@ session 이름 변경은 표시 이름만 바꾸므로 CLI identity와 프로젝
 `Ctrl-b c`는 이름 없는 workspace를 바로 만든다. 현재 workspace 이름 변경은 `Ctrl-b ,`를 쓴다.
 picker 소스와 검증 방법은 [picker/README.md](picker/README.md)에 있다.
 `bin/tuios-picker`는 최초 실행 또는 소스 변경 시 Go 바이너리를 `~/.cache/dotfiles-tuios/`에 빌드하고 재사용한다.
+picker popup은 화면을 그리기 전에 TUIOS를 터미널 입력 모드로 전환한다. 창 관리 모드에서 열어도 첫 검색 입력이 picker로 전달된다.
 Go는 기본 Brewfile에 포함된다. 첫 빌드에는 의존성 다운로드가 필요하며, 회사 PC에서는 pull 후 `./setup.zsh`로 링크를 연결하면 된다.
 미리 빌드하려면 `tuios-picker --build`를 실행한다. 세션 방문 이력 파일과 기존 키 설정은 그대로 사용한다.
 TUIOS 실행 파일은 수정하지 않는다. `tuios-picker`는 공식 CLI와 내장 herdr 호환 API를 사용한다.
