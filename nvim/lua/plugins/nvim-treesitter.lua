@@ -12,9 +12,11 @@ return {
 				vim.env.CC = nil
 			end
 			local treesitter = require("nvim-treesitter")
-			treesitter.setup({})
+			-- Prefer current parsers and queries over files left by the legacy branch.
+			treesitter.setup({ install_dir = vim.fn.stdpath("data") .. "/site" })
 			treesitter.install({
 				"lua",
+				"vim",
 				"query",
 				"javascript",
 				"typescript",

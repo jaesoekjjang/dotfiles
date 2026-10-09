@@ -30,7 +30,6 @@ git diff --no-index -- tuios/config.toml "$HOME/Library/Application Support/tuio
 
 ## Workflow
 
-- `w`: [tmux/workmux 프로젝트·worktree·agent 메뉴](workmux/README.md)
 - `wt`: [TUIOS 프로젝트 세션](tuios/README.md)
 - Neovim: [검색·편집·Git 단축키](nvim/README.md)
 - Yazi: [복사·탐색·압축](yazi/README.md)

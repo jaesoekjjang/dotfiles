@@ -330,18 +330,18 @@ prefix_help = ['?']
 prefix_inbox = ['i']
 prefix_jump_notif = []
 prefix_keybinds = ['.']
-prefix_layout = ['L']
+prefix_layout = ['ctrl+l']
 prefix_mail = ['M']
 prefix_minimize = ['m']
 prefix_new_window = []
-prefix_next_attention = ['o']
+prefix_next_attention = []
 prefix_next_finished = ['O']
-prefix_next_window = ['n', 'tab']
+prefix_next_window = ['tab']
 prefix_prev_window = ['shift+tab']
 prefix_quit = ['q']
 prefix_rename_window = ['r']
 prefix_review = ['u']
-prefix_rotate_split = ['R']
+prefix_rotate_split = ['o']
 prefix_screenshot = ['C']
 prefix_scrollback = ['S']
 prefix_select_0 = []
@@ -356,9 +356,10 @@ prefix_select_8 = []
 prefix_select_9 = []
 prefix_selection = ['[']
 prefix_session_switcher = []
-prefix_settings = [',']
-prefix_split_horizontal = ['-']
-prefix_split_vertical = ['|', '\']
+prefix_settings = ['~']
+rename_workspace = [',']
+prefix_split_horizontal = ['-', 'ctrl+s']
+prefix_split_vertical = ['|', '\', 'ctrl+v']
 prefix_tape = ['T']
 prefix_toggle_sidebar = ['b']
 prefix_toggle_tiling = ['space']
@@ -367,6 +368,10 @@ prefix_workspace = ['W']
 prefix_workspace_switcher = []
 prev_session = ['(']
 rename_session = ['$']
+swap_down = ['J']
+swap_left = ['H']
+swap_right = ['L']
+swap_up = ['K']
 switch_workspace_1 = ['1']
 switch_workspace_2 = ['2']
 switch_workspace_3 = ['3']
@@ -381,7 +386,7 @@ terminal_focus_left = ['h', 'left']
 terminal_focus_right = ['l', 'right']
 terminal_focus_up = ['k', 'up']
 toggle_scratch = []
-toggle_spotlight = ['B']
+prefix_toggle_spotlight = ['B']
 
 [keybindings.window_prefix]
 window_prefix_cancel = ['esc']
@@ -505,16 +510,16 @@ key = 'prefix+s'
 type = 'popup'
 command = 'env TUIOS_PICKER_POPUP=1 tuios-picker sessions'
 description = 'Fuzzy session 선택'
-width = '80%'
-height = '70%'
+width = '95%'
+height = '90%'
 
 [[keybindings.command]]
 key = 'prefix+w'
 type = 'popup'
 command = 'env TUIOS_PICKER_POPUP=1 tuios-picker workspaces'
 description = 'Fuzzy workspace 선택'
-width = '70%'
-height = '60%'
+width = '95%'
+height = '90%'
 
 [[keybindings.command]]
 key = 'prefix+c'
@@ -525,8 +530,8 @@ description = '새 workspace 열기'
 [[keybindings.command]]
 key = 'prefix+p'
 type = 'popup'
-command = 'tuios-trial menu'
-description = 'Trial workspace menu'
+command = 'tuios-trial project'
+description = '프로젝트 선택'
 
 [[keybindings.command]]
 key = 'prefix+g'
@@ -537,18 +542,10 @@ width = '90%'
 height = '90%'
 
 [[keybindings.command]]
-key = 'prefix+v'
+key = 'prefix+G'
 type = 'popup'
 command = "tuios-trial app nvim -c 'GitDiff!'"
 description = 'CodeDiff changes'
-width = '100%'
-height = '100%'
-
-[[keybindings.command]]
-key = 'prefix+V'
-type = 'popup'
-command = "tuios-trial app nvim -c 'GitHistory!'"
-description = 'CodeDiff history'
 width = '100%'
 height = '100%'
 
@@ -567,6 +564,27 @@ command = 'tuios-trial app /bin/zsh'
 description = 'Shell'
 width = '85%'
 height = '85%'
+
+[[keybindings.command]]
+key = 'prefix+n'
+name = 'next-workspace'
+type = 'shell'
+command = 'tuios-picker next-workspace'
+description = '다음 workspace'
+
+[[keybindings.command]]
+key = 'prefix+v'
+name = 'prev-workspace'
+type = 'shell'
+command = 'tuios-picker prev-workspace'
+description = '이전 workspace'
+
+[[keybindings.command]]
+key = 'prefix+backspace'
+name = 'last-session'
+type = 'shell'
+command = 'tuios-picker last-session'
+description = '직전 session으로 돌아가기'
 
 [keybindings.script]
 script_pause = ['ctrl+p']
@@ -692,7 +710,7 @@ autorun = 'ask'
 auto_review = false
 
 [hooks]
-after-attach = ['"$HOME/.local/bin/tuios-trial" _initialize-sidebar', '"$HOME/.local/bin/tuios-trial" _initialize-layout']
+after-attach = ['"$HOME/.local/bin/tuios-picker" record-session', '"$HOME/.local/bin/tuios-trial" _initialize-sidebar', '"$HOME/.local/bin/tuios-trial" _initialize-layout']
 
 [debug]
 show_key_events = false

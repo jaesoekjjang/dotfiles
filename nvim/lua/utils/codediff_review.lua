@@ -110,6 +110,10 @@ local function show(cwd, tab, config)
 		view.show_welcome(tab)
 	end
 	refresh.attach(tab)
+	-- Re-selecting an unchanged comparison normally skips rendering. A user
+	-- may have replaced a diff window's buffer with :edit or a picker, so
+	-- explicitly put the selected comparison back into its windows.
+	refresh.reopen(tab)
 	if config.panel.name == "history" then
 		refresh.request(tab, { full = true })
 	end
@@ -173,9 +177,11 @@ function M.history(cwd, exit_on_close)
 		session.exit_on_close = session.exit_on_close or exit_on_close == true
 		vim.api.nvim_set_current_tabpage(tab)
 		local panel = lifecycle.get_panel_view(tab)
-		if panel.is_hidden then
+		if panel.is_hidden or not (panel.winid and vim.api.nvim_win_is_valid(panel.winid)) then
+			panel.is_hidden = true
 			require("codediff.ui.history").toggle_visibility(panel)
 		end
+		require("codediff.ui.refresh").reopen(tab)
 		vim.api.nvim_set_current_win(panel.winid)
 		return
 	end
@@ -185,6 +191,148 @@ function M.history(cwd, exit_on_close)
 			done(err, { panel = { name = "history", data = { commits = commits } } })
 		end)
 	end)
+end
+
+function M.restore()
+	local lifecycle = require("codediff.ui.lifecycle")
+	local tab = vim.api.nvim_get_current_tabpage()
+	local session = lifecycle.get_session(tab)
+	if not session then
+		-- Closing a comparison window can tear down the upstream session.
+		-- Open a fresh working-tree review when there is nothing left to replay.
+		for cwd, review_tab in pairs(tabs) do
+			if review_tab == tab then
+				return M.explorer(cwd)
+			end
+		end
+		return require("utils.gitdiff").open()
+	end
+	if session.result_win then
+		vim.notify("Conflict view: reopen the conflict from the file list", vim.log.levels.WARN)
+		return
+	end
+	local panel = lifecycle.get_panel_view(tab)
+	if panel and (panel.is_hidden or not (panel.winid and vim.api.nvim_win_is_valid(panel.winid))) then
+		panel.is_hidden = true
+		require("codediff.ui." .. session.panel.name).toggle_visibility(panel)
+	end
+	require("codediff.ui.refresh").reopen(tab)
+end
+
+function M.toggle_panel_position()
+	local lifecycle = require("codediff.ui.lifecycle")
+	local current = lifecycle.get_session(vim.api.nvim_get_current_tabpage())
+	if not current or not current.panel then
+		return
+	end
+	local name = current.panel.name
+	local options = require("codediff.config").options[name]
+	local position = options.position == "left" and "bottom" or "left"
+	options.position = position
+	-- The upstream layout manager reads a global option per panel type.
+	-- Move every open panel of that type so later resizing stays consistent.
+	local sessions = require("codediff.ui.lifecycle.session").get_active_diffs()
+	for tab, session in pairs(sessions) do
+		local panel = session.panel and session.panel.name == name and lifecycle.get_panel_view(tab)
+		if panel and panel.split then
+			-- Pinned v4.0.6's Split uses these when a hidden panel is shown again.
+			panel.split._position = position == "left" and "left" or "below"
+			panel.split._size = position == "left" and options.width or options.height
+			if panel.winid and vim.api.nvim_win_is_valid(panel.winid) then
+				vim.api.nvim_win_call(panel.winid, function()
+					vim.cmd(position == "left" and "wincmd H" or "wincmd J")
+					require("codediff.ui.layout").arrange(tab)
+				end)
+			end
+		end
+	end
+end
+
+local function preview_cursor()
+	local lifecycle = require("codediff.ui.lifecycle")
+	local tab = vim.api.nvim_get_current_tabpage()
+	local session = lifecycle.get_session(tab)
+	local panel = session and lifecycle.get_panel_view(tab)
+	if not session or not session.dotfiles_auto_preview or not panel
+		or vim.api.nvim_get_current_buf() ~= panel.bufnr then
+		return
+	end
+	local node = panel.tree:get_node()
+	local file = node and node.data
+	if file and file.type == "commit" then
+		local hash = file.hash
+		panel.load_commit_files(node, function(err)
+			-- Git may finish after the cursor moved or preview was disabled.
+			if err or not session.dotfiles_auto_preview or lifecycle.get_session(tab) ~= session
+				or lifecycle.get_panel_view(tab) ~= panel or vim.api.nvim_get_current_buf() ~= panel.bufnr
+			then
+				return
+			end
+			local active = panel.tree:get_node()
+			if not active or not active.data or active.data.hash ~= hash then
+				return
+			end
+			local selected = panel.data.current_selection or {}
+			local files = panel.data.files[hash] or {}
+			local candidate = files[1]
+			for _, item in ipairs(files) do
+				if item.path == selected.path then candidate = item; break end
+			end
+			if candidate and (selected.commit_hash ~= hash or selected.path ~= candidate.path) then
+				panel.on_file_select(vim.tbl_extend("force", candidate, { commit_hash = hash, git_root = session.git_root }))
+			end
+		end)
+		return
+	end
+	if not file or file.type == "group" or file.type == "directory" or not file.path then
+		return
+	end
+	local selected = panel.data.current_selection or {}
+	if selected.path ~= file.path or selected.group ~= file.group or selected.commit_hash ~= file.commit_hash then
+		panel.on_file_select(file)
+	end
+end
+
+local function toggle_preview()
+	local session = require("codediff.ui.lifecycle").get_session(vim.api.nvim_get_current_tabpage())
+	if session then
+		session.dotfiles_auto_preview = not session.dotfiles_auto_preview
+		vim.notify("CodeDiff cursor preview: " .. (session.dotfiles_auto_preview and "ON" or "OFF"))
+		preview_cursor()
+	end
+end
+
+function M.setup_keymaps()
+	local group = vim.api.nvim_create_augroup("DotfilesCodeDiffKeys", { clear = true })
+	local function bind()
+		vim.schedule(function()
+			local lifecycle = require("codediff.ui.lifecycle")
+			local tab = vim.api.nvim_get_current_tabpage()
+			local session = lifecycle.get_session(tab)
+			if not session then
+				return
+			end
+			local opts = { desc = "Restore CodeDiff panels" }
+			lifecycle.set_tab_keymap(tab, "n", "gR", M.restore, opts)
+			lifecycle.set_tab_keymap(tab, "n", "gP", M.toggle_panel_position,
+				{ desc = "Move CodeDiff panel left/bottom" })
+			local panel = lifecycle.get_panel_view(tab)
+			if panel and (session.panel.name == "explorer" or session.panel.name == "history") then
+				lifecycle.set_buf_keymap(tab, panel.bufnr, "n", "<C-p>", toggle_preview,
+					{ desc = "Toggle CodeDiff cursor preview" }, { suspendable = false })
+			end
+			-- Keep recovery available after a picker/:edit replaces a diff
+			-- window's buffer. The session registry restores prior mappings
+			-- on tab leave and disposes them when the review closes.
+			local win = vim.api.nvim_get_current_win()
+			if win == session.original_win or win == session.modified_win then
+				lifecycle.set_buf_keymap(tab, vim.api.nvim_get_current_buf(), "n", "gR", M.restore, opts)
+			end
+		end)
+	end
+	vim.api.nvim_create_autocmd("User", { group = group, pattern = "CodeDiffOpen", callback = bind })
+	vim.api.nvim_create_autocmd({ "BufEnter", "WinEnter", "TabEnter" }, { group = group, callback = bind })
+	vim.api.nvim_create_autocmd("CursorMoved", { group = group, callback = preview_cursor })
 end
 
 return M

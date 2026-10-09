@@ -180,3 +180,28 @@ tmux prefix는 `Ctrl-b` 또는 `Ctrl-k`다.
 Yazi는 `q`, shell은 `exit`로 종료한다. 기존 `prefix → g`의 Lazygit popup도 유지한다.
 tmux 3.6a의 popup 커서 조회 버그(#4942)를 피하려고 Yazi는 별도 tmux 서버의 pane에서 실행한다.
 Yazi를 종료하거나 popup을 닫으면 해당 세션도 제거된다. 기존 작업 세션에는 영향을 주지 않는다.
+
+### CodeDiff 패널 복구
+
+- `<leader>b`: changes 목록 숨기기/표시. `<leader>e`: 목록으로 포커스.
+- CodeDiff 안의 `gR` / `:GitDiffRestore`: 현재 선택한 비교 버퍼와 숨기거나 닫은 목록 창 복구.
+  비교 창을 닫아 CodeDiff 세션 자체가 종료된 경우에는 현재 변경사항 리뷰를 새로 연다.
+  이때 이전 커밋 선택은 유지되지 않는다 (`:GitReview <commit>`으로 다시 열기).
+- `:GitDiff`도 기존 리뷰 탭을 재사용할 때 비교 버퍼를 다시 표시한다.
+- 리뷰 중 일반 파일 편집은 `gf`로 이전 탭에서 열고, `gt`로 리뷰 탭에 돌아오는 흐름을 권장한다.
+  비교 창 자체에서 다른 버퍼를 열었다면 `:GitDiffRestore`로 복구한다.
+- 회귀 확인: 저장소 루트에서 `nvim --headless -u NONE -l tests/codediff_restore.lua`.
+
+CodeDiff는 변경 없는 부분을 기본으로 접는다 (`compact = true`). `gc`로 접기/펼치기를 전환한다.
+Changes 목록의 `Ctrl-p`는 커서 자동 미리보기 토글이다. 기본은 꺼짐이며, 켜면 `j/k` 등으로
+커서를 옮길 때 해당 파일의 비교 화면이 갱신된다. History 목록에서도 동작한다. 커밋 행에서는 직전에 보던 파일이 있으면 그 파일을, 없으면 첫 파일을 미리본다. 펼쳐진 파일 행에서는 해당 파일을 미리본다.
+이전에 참조하던 누락된 `utils.codediff_preview` 대신 리뷰 설정에서 이 동작을 제공한다.
+
+변경 목록 밖의 파일은 `<leader>ff`의 미리보기에서 확인할 수 있다. 길게 보거나 편집하려면
+검색창에서 `Ctrl-s` (상하) / `Ctrl-v` (좌우)로 같은 탭에 별도 창을 열고,
+`Ctrl-w q`로 그 보조 창만 닫는다. 검색에서 Enter로 기존 비교 창의 버퍼를 바꿨다면 `gR`로 돌아온다.
+파일 검색은 현재 작업 트리의 파일을 보여주며 과거 커밋 버전은 아니다.
+
+CodeDiff 안의 `gP`는 목록 패널을 왼쪽 ↔ 아래로 옮긴다. 선택한 파일과 미리보기 상태는 유지한다.
+플러그인의 배치 설정이 패널 종류별 공통값이므로, 같은 Neovim의 열린 Changes 목록끼리
+또는 History 목록끼리 함께 이동한다. 실행 중에만 적용되며 Neovim을 다시 열면 왼쪽에서 시작한다.

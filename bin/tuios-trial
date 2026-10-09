@@ -76,6 +76,13 @@ project_picker() {
   print -r -- "${selected%%$'\t'*}"
 }
 
+open_project() {
+  local root
+  root=$(project_picker) || return 0
+  [[ -n "$root" ]] || return 0
+  "$script" --prepare "$root"
+}
+
 menu() {
   [[ -n "$TUIOS_SESSION" ]] || { print -u2 'TUIOS 안에서 실행하세요.'; return 1; }
   local action root
@@ -84,9 +91,7 @@ menu() {
     fzf --prompt='tuios> ' --header='세션 이동: Ctrl-b s · Inbox: Ctrl-b i · Esc: 취소') || return 0
   case "${action%% *}" in
     project)
-      root=$(project_picker) || return 0
-      [[ -n "$root" ]] || return 0
-      "$script" --prepare "$root"
+      open_project
       ;;
     agent) tuios new-window agent --cwd "$root" -- "$script" app codex ;;
     review) tuios new-window review --cwd "$root" -- "$script" app nvim -c CodeDiff ;;
@@ -99,11 +104,13 @@ case "${1:-}" in
   _initialize-sidebar) exec python3 "${script:h}/tuios-sidebar" ;;
   _initialize-layout) initialize_layout; exit ;;
   new-workspace) new_workspace; exit ;;
+  project) open_project; exit ;;
   menu) menu; exit ;;
   help|--help|-h)
     print 'wt [Git 프로젝트 경로]          Codex + Neovim + shell 시험 세션'
     print 'wt --prepare [프로젝트 경로]    세션만 만들고 attach 명령 표시'
-    print 'Ghostty의 tmux 밖에서 실행. TUIOS 안에서는 Ctrl-b p 메뉴.'
+    print 'Ghostty의 tmux 밖에서 실행. TUIOS 안에서는 Ctrl-b p로 프로젝트 선택.'
+    print 'tuios-trial menu               프로젝트 / agent / review / editor 메뉴'
     exit ;;
 esac
 

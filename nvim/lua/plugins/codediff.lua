@@ -1,7 +1,7 @@
 return {
 	"esmuellert/codediff.nvim",
 	version = "v4.0.6",
-	cmd = { "CodeDiff", "GitDiff", "GitHistory", "GitReview", "FileDiff" },
+	cmd = { "CodeDiff", "GitDiff", "GitDiffRestore", "GitHistory", "GitReview", "FileDiff" },
 	keys = {
 		{ "<leader>gd", "<cmd>GitDiff<cr>", desc = "Repository diff or latest commit" },
 		{ "<leader>gh", "<cmd>GitHistory<cr>", desc = "Browse history in review tab" },
@@ -22,7 +22,7 @@ return {
 	},
 	config = function()
 		require("codediff").setup({
-			diff = { layout = "side-by-side", filler_text = "", cycle_hunks_across_files = true },
+			diff = { layout = "side-by-side", filler_text = "", cycle_hunks_across_files = true, compact = true },
 			explorer = { auto_open_on_cursor = false, focus_on_select = false },
 			history = { position = "left" },
 			keymaps = {
@@ -32,10 +32,13 @@ return {
 				},
 			},
 		})
-		require("utils.codediff_preview").setup()
+		require("utils.codediff_review").setup_keymaps()
 		vim.api.nvim_create_user_command("GitDiff", function(opts)
 			require("utils.gitdiff").open(opts.bang)
 		end, { bang = true, desc = "Review working changes or HEAD; ! exits Neovim on close" })
+		vim.api.nvim_create_user_command("GitDiffRestore", function()
+			require("utils.codediff_review").restore()
+		end, { desc = "Restore CodeDiff panels and the selected comparison" })
 		vim.api.nvim_create_user_command("GitHistory", function(opts)
 			require("utils.gitdiff").history(opts.bang)
 		end, { bang = true, desc = "Browse history in review tab; ! exits Neovim on close" })
