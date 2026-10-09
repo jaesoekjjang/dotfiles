@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+"""Apply sidebar file settings after TUIOS restores a headless session."""
+import os
+from pathlib import Path
+import subprocess
+import tomllib
+
+session = os.environ.get("TUIOS_SESSION_ID")
+if session:
+    config_path = Path.home() / "Library/Application Support/tuios/config.toml"
+    with config_path.open("rb") as config_file:
+        sidebar = tomllib.load(config_file)["appearance"]["sidebar"]
+    # TUIOS 0.8.5 restores daemon defaults over these settings on attach.
+    # Resolve each value from the file so later edits remain authoritative.
+    for field in ("sections", "background", "width"):
+        value = str(sidebar[field])
+        option = "appearance.sidebar." + field
+        current = subprocess.run(
+            ["tuios", "get-config", option, "-s", session],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        if current != value:
+            subprocess.run(
+                ["tuios", "set-config", option, value, "-s", session],
+                stdout=subprocess.DEVNULL, check=True,
+            )

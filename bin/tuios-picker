@@ -1,0 +1,238 @@
+#!/usr/bin/env python3
+"""Fuzzy navigation through TUIOS's unmodified CLI and herdr-compatible API."""
+
+import json
+import os
+from pathlib import Path
+import socket
+import subprocess
+import sys
+import time
+
+
+def rpc(method, **params):
+    runtime = os.environ.get("XDG_RUNTIME_DIR")
+    default = Path(runtime) / "tuios/tuios.sock" if runtime else Path(f"/tmp/tuios-{os.getuid()}/tuios.sock")
+    path = os.environ.get("TUIOS_SOCKET", str(default)) + ".herdr"
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+        connection.settimeout(20)
+        connection.connect(path)
+        request = {"id": "dotfiles-picker", "method": method, "params": params}
+        connection.sendall((json.dumps(request) + "\n").encode())
+        reply = json.loads(connection.makefile("rb").readline())
+    if "error" in reply:
+        raise RuntimeError(reply["error"]["message"])
+    return reply["result"]
+
+
+def cli(*args):
+    return json.loads(subprocess.check_output(["tuios", *args, "--json"], text=True))
+
+
+def clean(text):
+    return " ".join(str(text).split())
+
+
+def close_own_popup():
+    window = os.environ.get("TUIOS_WINDOW_ID")
+    target = os.environ.get("TUIOS_SESSION")
+    if not window or not target:
+        return
+    try:
+        if os.environ.get("TUIOS_PICKER_POPUP") != "1":
+            # Also cover clients still using the earlier binding. A picker run
+            # manually in an ordinary shell must never close that shell.
+            info = cli("get-window", window, "-s", target)
+            if info.get("custom_name") not in ("Fuzzy session 선택", "Fuzzy workspace 선택"):
+                return
+        rpc("pane.close", pane_id=window)
+    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError):
+        # The native exit path, or closing the selected session/workspace,
+        # may already have removed this popup.
+        pass
+
+
+def choose(rows, kind, current=None):
+    position = next((i + 1 for i, row in enumerate(rows) if row[0] == current), 1)
+    # Match names (and workspace numbers), not informational paths/counts.
+    # --nth addresses the columns after --with-nth has hidden the opaque ID.
+    fields = "1" if kind == "session" else "1,2"
+    result = subprocess.run(
+        ["fzf", "--prompt", f"{kind}> ", "--delimiter", "\t", "--with-nth", "2..", "--nth", fields,
+         "--extended", "--layout=reverse", "--no-multi", "--sync", "--tiebreak=index",
+         "--bind", f"start:pos({position})",
+         "--bind", "result:transform:if [ -n {q} ]; then echo first; fi",
+         "--expect=ctrl-a,ctrl-r,ctrl-d", "--bind=enter:accept-non-empty",
+         "--header", "Enter: 이동 · Ctrl-a: 추가 · Esc: 닫기\nCtrl-r: 이름 변경 · Ctrl-d: 종료"],
+        input="".join("\t".join(map(clean, row)) + "\n" for row in rows),
+        text=True, stdout=subprocess.PIPE,
+    )
+    if result.returncode == 130:
+        return None, None
+    lines = result.stdout.splitlines()
+    key = lines[0] if lines else ""
+    selected = lines[1].split("\t", 1)[0] if len(lines) > 1 else None
+    # fzf exits 1 when Ctrl-a is pressed with no selected result. The explicit
+    # creation key still takes effect; a missing result must not swallow it.
+    if result.returncode == 1 and key != "ctrl-a":
+        return None, None
+    if result.returncode not in (0, 1):
+        raise RuntimeError(f"fzf 종료 코드: {result.returncode}")
+    return key, selected
+
+
+def confirm_close(kind, label, panes):
+    result = subprocess.run(
+        ["fzf", "--prompt", "종료 확인> ", "--layout=reverse", "--no-multi",
+         "--header", f"{kind} '{clean(label)}' 종료 · {panes} panes · y: 종료 / n, Esc: 취소",
+         "--bind=y:pos(2)+accept,n:abort"],
+        input="취소\n종료\n", text=True, stdout=subprocess.PIPE,
+    )
+    return result.returncode == 0 and result.stdout.strip() == "종료"
+
+
+def session_workspace_id(target):
+    opaque = "w" + cli("session-info", "-s", target)["session_id"].replace("-", "")
+    return rpc("workspace.get", workspace_id=opaque)["workspace"]["workspace_id"]
+
+
+def close_target(kind, selected, current, target):
+    """Run outside the popup's process group, which closing may terminate."""
+    state = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "dotfiles-tuios"
+    state.mkdir(parents=True, exist_ok=True)
+    with (state / "close.log").open("a") as log:
+        subprocess.Popen(
+            [sys.executable, str(Path(__file__).resolve()), "_close", kind, selected, current, target],
+            stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True,
+        )
+
+
+def finish_close(kind, selected, current, target):
+    if kind == "session":
+        if selected == current:
+            items = rpc("workspace.list")["workspaces"]
+            index = next(i for i, item in enumerate(items) if item["workspace_id"] == current)
+            others = items[index + 1:] + items[:index]
+            if others:
+                sessions = cli("ls")
+                next_id = others[0]["workspace_id"]
+                destination = next(item["name"] for item in sessions
+                                   if ("w" + item["id"].replace("-", "")).startswith(next_id))
+                clients = [item for item in cli("list-clients") if item["session"] == target]
+                if len(clients) > 1:
+                    raise RuntimeError("현재 세션에 여러 client가 연결되어 있어 자동 이동할 client를 정할 수 없습니다.")
+                if clients:
+                    client = clients[0]["client_id"]
+                    cli("switch-session", destination, "--client", client)
+                    # switch-session requests a switch asynchronously. Killing
+                    # before the client attaches would still disconnect it.
+                    deadline = time.monotonic() + 10
+                    while not any(item["client_id"] == client and item["session"] == destination
+                                  for item in cli("list-clients")):
+                        if time.monotonic() >= deadline:
+                            raise RuntimeError("다른 세션으로 이동하지 못해 현재 세션 종료를 취소했습니다.")
+                        time.sleep(0.05)
+        rpc("workspace.close", workspace_id=selected)
+    else:
+        tabs = rpc("tab.list", workspace_id=session_workspace_id(target))["tabs"]
+        tab = next(item for item in tabs if item["number"] == int(selected))
+        rpc("tab.close", tab_id=tab["tab_id"])
+
+
+def close_current(kind, target):
+    if kind == "session":
+        current = session_workspace_id(target)
+        item = rpc("workspace.get", workspace_id=current)["workspace"]
+        label, panes = item.get("label") or target, item["pane_count"]
+    else:
+        items = cli("list-workspaces", "-s", target)["workspaces"]
+        item = next(item for item in items if item.get("current"))
+        current = str(item["workspace"])
+        label, panes = item.get("name") or current, item["window_count"]
+    if confirm_close(kind, label, panes):
+        close_target(kind, current, current, target)
+
+
+def main():
+    kind = sys.argv[1] if len(sys.argv) > 1 else "sessions"
+    target = os.environ.get("TUIOS_SESSION")
+    if not target:
+        raise RuntimeError("TUIOS 안에서 실행하세요.")
+    if kind in ("close-session", "close-workspace"):
+        close_current(kind.removeprefix("close-"), target)
+        return
+    if kind == "sessions":
+        items = rpc("workspace.list")["workspaces"]
+        info = cli("session-info", "-s", target)
+        current = rpc("workspace.get", workspace_id="w" + info["session_id"].replace("-", ""))["workspace"]["workspace_id"]
+        rows = []
+        for item in items:
+            worktree = item.get("worktree") or {}
+            rows.append((item["workspace_id"], item.get("label") or item["workspace_id"],
+                         "current" if item["workspace_id"] == current else "",
+                         f"{item['pane_count']} panes", worktree.get("checkout_path", "")))
+        key, selected = choose(rows, "session", current)
+        item = next((item for item in items if item["workspace_id"] == selected), None)
+        if key == "ctrl-a":
+            name = input("새 session 이름 (빈 입력: 취소)> ").strip()
+            if name:
+                created = rpc("workspace.create", label=name, cwd=os.environ.get("TUIOS_ACTIVE_PANE_CWD", os.getcwd()))
+                rpc("workspace.focus", workspace_id=created["workspace"]["workspace_id"])
+        elif key == "ctrl-r" and item:
+            name = input(f"session '{clean(item.get('label') or selected)}' 새 표시 이름 (빈 입력: 취소)> ").strip()
+            if name:
+                rpc("workspace.rename", workspace_id=selected, label=name)
+            return True
+        elif key == "ctrl-d" and item:
+            if confirm_close("session", item.get("label") or selected, item["pane_count"]):
+                close_target("session", selected, current, target)
+                return
+            return True
+        elif key in ("ctrl-r", "ctrl-d"):
+            return True
+        elif selected:
+            rpc("workspace.focus", workspace_id=selected)
+    elif kind == "workspaces":
+        items = cli("list-workspaces", "-s", target)["workspaces"]
+        rows = [(str(item["workspace"]), str(item["workspace"]), item.get("name", ""),
+                 "current" if item.get("current") else "", f"{item['window_count']} panes")
+                for item in items if item.get("current") or item["window_count"] or item.get("name")]
+        current = next((str(item["workspace"]) for item in items if item.get("current")), None)
+        key, selected = choose(rows, "workspace", current)
+        item = next((item for item in items if str(item["workspace"]) == selected), None)
+        if key == "ctrl-a":
+            subprocess.run([str(Path(__file__).resolve().with_name("tuios-trial")), "new-workspace"], check=True)
+        elif key == "ctrl-r" and item:
+            name = input(f"workspace {selected} 새 이름 (빈 입력: 취소)> ").strip()
+            if name:
+                subprocess.run(["tuios", "set-workspace-name", selected, name, "-s", target],
+                               check=True, stdout=subprocess.DEVNULL)
+            return True
+        elif key == "ctrl-d" and item:
+            if confirm_close("workspace", item.get("name") or selected, item["window_count"]):
+                close_target("workspace", selected, current, target)
+                return
+            return True
+        elif key in ("ctrl-r", "ctrl-d"):
+            return True
+        elif selected:
+            cli("select-workspace", selected, "-s", target)
+    else:
+        raise RuntimeError(f"알 수 없는 picker: {kind}")
+
+
+if __name__ == "__main__":
+    try:
+        if len(sys.argv) > 1 and sys.argv[1] == "_close":
+            finish_close(*sys.argv[2:])
+        else:
+            while main():
+                pass
+    except (EOFError, KeyboardInterrupt):
+        pass
+    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as error:
+        print(f"tuios-picker: {error}", file=sys.stderr)
+        sys.exit(1)
+    finally:
+        if len(sys.argv) < 2 or sys.argv[1] != "_close":
+            close_own_popup()

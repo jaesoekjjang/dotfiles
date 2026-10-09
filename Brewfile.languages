@@ -1,0 +1,6 @@
+# Optional language runtimes. Node, Python and Go are in the core profile.
+brew "ghc"
+brew "cabal-install"
+brew "opam"
+brew "ccls"
+brew "rust"

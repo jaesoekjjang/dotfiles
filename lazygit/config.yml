@@ -1,0 +1,23 @@
+os:
+  editPreset: "nvim"
+  edit: "nvim {{filename}}"
+  editAtLine: "nvim +{{line}} {{filename}}"
+  editAtLineAndWait: "nvim +{{line}} {{filename}}"
+git:
+  diffRenderers:
+    - colorArg: always
+      command: delta --dark --paging=never
+customCommands:
+  - key: "E"
+    description: "Add empty commit"
+    context: "commits"
+    loadingText: "Committing empty commit..."
+    command: 'git commit --allow-empty -m "{{.Form.Message}}"'
+    prompts:
+      - type: "input"
+        key: "Message"
+        title: "Empty commit message"
+  - key: "C"
+    command: "cz c"
+    description: "Commit with commitizen"
+    context: "files"

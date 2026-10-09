@@ -1,0 +1,7 @@
+#!/usr/bin/env zsh
+emulate -LR zsh
+editor=("${(@Q)${(z)EDITOR:-nvim}}")
+if [[ "${editor[1]:t}" == nvim && -n "${TUIOS_SESSION:-}" ]]; then
+  exec "${0:A:h}/tuios-trial" app "${editor[@]}" "$@"
+fi
+exec "${editor[@]}" "$@"

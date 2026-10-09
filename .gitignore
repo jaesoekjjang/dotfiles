@@ -1,0 +1,7 @@
+# macOS generated metadata
+.DS_Store
+__pycache__/
+*.pyc
+
+# Machine-local Claude approvals
+**/.claude/settings.local.json

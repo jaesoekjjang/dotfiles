@@ -1,0 +1,7 @@
+tap "nikitabobko/tap"
+tap "felixkratz/formulae"
+brew "felixkratz/formulae/borders"
+cask "nikitabobko/tap/aerospace"
+cask "ghostty"
+cask "font-hack-nerd-font"
+cask "font-d2coding-nerd-font"

@@ -1,0 +1,14 @@
+merge_strategy: rebase
+worktree_naming: full
+mode: window
+agent: 'codex --dangerously-bypass-approvals-and-sandbox'
+panes:
+  - command: <agent>
+    focus: true
+  - command: nvim
+    split: horizontal
+  - split: vertical
+    percentage: 25
+
+theme: slate-garden
+nerdfont: true

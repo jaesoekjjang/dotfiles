@@ -1,0 +1,198 @@
+#!/usr/bin/env zsh
+
+emulate -LR zsh
+setopt errexit pipefail
+
+script=${0:A}
+
+app() {
+  # A daemon launched by a runner may retain NO_COLOR for its entire lifetime.
+  unset NO_COLOR
+  # TUIOS 0.8.5 loses backgrounds on xterm erase operations. Without BCE,
+  # Neovim paints the blank cells itself, preserving the colorscheme background.
+  if [[ "${1:t}" == nvim && -n "${TUIOS_SESSION:-}" ]]; then
+    export TERM=tmux-256color
+  fi
+  # Preserve TUIOS's notification identity for Codex behind this wrapper.
+  if [[ "${1:t}" == codex && "${TERM_PROGRAM:-}" == TUIOS ]]; then
+    export TERM_PROGRAM=WarpTerminal
+  fi
+  exec "$@"
+}
+
+# Called by the native after-attach hook, including picker session switches.
+# A UUID marker limits layout initialization to sessions this launcher just made.
+initialize_layout() {
+  local target=${TUIOS_SESSION_ID:-} session_id session_name pending agent
+  [[ -n "$target" ]] || return 0
+  # 0.8.5's hook variable carries the session name, despite the _ID suffix.
+  session_id=$(tuios ls --json | jq -er --arg target "$target" \
+    '.[] | select(.id == $target or .name == $target) | .id') || return 0
+  [[ "$session_id" != *[^a-zA-Z0-9-]* ]] || return 1
+  session_name=$(tuios ls --json | jq -er --arg id "$session_id" '.[] | select(.id == $id) | .name') || return 1
+  pending=${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-tuios/pending/$session_id
+  [[ -f "$pending" ]] || return 0
+  agent=$(<"$pending")
+  # Failed initialization keeps the marker so the next attach can retry.
+  tuios select-workspace 1 -s "$session_name" >/dev/null || return 1
+  tuios set-layout -s "$session_name" --tiling true --master-position left --masters 1 --json |
+    jq -e '.success == true' >/dev/null || return 1
+  tuios focus-window -s "$session_name" "$agent" >/dev/null || return 1
+  rm -f -- "$pending"
+}
+
+new_workspace() {
+  local target=${TUIOS_SESSION:-} workspace_id workspaces pane_cwd=${TUIOS_ACTIVE_PANE_CWD:-$PWD}
+  [[ -n "$target" ]] || { print -u2 'TUIOS 안에서 실행하세요.'; return 1; }
+  workspaces=$(tuios list-workspaces -s "$target" --json) || return 1
+  workspace_id=$(print -r -- "$workspaces" |
+    jq -er '[.workspaces[] | select(.current != true and .window_count == 0 and (.name // "") == "")] | sort_by(.workspace) | .[0].workspace // empty') || {
+    print -u2 '추가할 빈 workspace가 없습니다 (최대 9개).'
+    return 1
+  }
+  tuios new-window -s "$target" shell --workspace "$workspace_id" --cwd "$pane_cwd" --no-focus -- "$script" app /bin/zsh >/dev/null || return 1
+  tuios select-workspace "$workspace_id" -s "$target" >/dev/null
+}
+
+project_picker() {
+  local cache=${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles-workspace/projects.tsv
+  local reload="${(q)script:h}/workspace _projects"
+  local selected
+  local -a initial_reload
+  if [[ -s "$cache" ]]; then
+    # Cached selection must not wait for a filesystem scan or cache lock.
+    # Redirect all descriptors so this worker cannot keep the picker pipe open.
+    nohup "${script:h}/workspace" _projects --refresh </dev/null >/dev/null 2>&1 &!
+  else
+    initial_reload=(--bind "load:reload($reload)+unbind(load)")
+  fi
+  selected=$({ [[ -r "$cache" ]] && cat "$cache"; } |
+    fzf --prompt='tuios project> ' \
+      --delimiter=$'\t' --with-nth=2,3 --nth=1,2 --extended \
+      --header='Enter: 세션 준비 · 이후 Ctrl-b s로 이동 · Ctrl-r: 갱신 · Esc: 취소' \
+      "${initial_reload[@]}" \
+      --bind "ctrl-r:reload-sync($reload --refresh)") || return 1
+  [[ -n "$selected" ]] || return 1
+  print -r -- "${selected%%$'\t'*}"
+}
+
+menu() {
+  [[ -n "$TUIOS_SESSION" ]] || { print -u2 'TUIOS 안에서 실행하세요.'; return 1; }
+  local action root
+  root=$(git rev-parse --show-toplevel 2>/dev/null) || root=$PWD
+  action=$(printf '%s\n' 'project 다른 프로젝트 열기' 'agent   새 Codex pane' 'review  CodeDiff로 변경 검토' 'editor  새 Neovim pane' |
+    fzf --prompt='tuios> ' --header='세션 이동: Ctrl-b s · Inbox: Ctrl-b i · Esc: 취소') || return 0
+  case "${action%% *}" in
+    project)
+      root=$(project_picker) || return 0
+      [[ -n "$root" ]] || return 0
+      "$script" --prepare "$root"
+      ;;
+    agent) tuios new-window agent --cwd "$root" -- "$script" app codex ;;
+    review) tuios new-window review --cwd "$root" -- "$script" app nvim -c CodeDiff ;;
+    editor) tuios new-window editor --cwd "$root" -- "$script" app nvim ;;
+  esac
+}
+
+case "${1:-}" in
+  app) shift; app "$@" ;;
+  _initialize-sidebar) exec python3 "${script:h}/tuios-sidebar" ;;
+  _initialize-layout) initialize_layout; exit ;;
+  new-workspace) new_workspace; exit ;;
+  menu) menu; exit ;;
+  help|--help|-h)
+    print 'wt [Git 프로젝트 경로]          Codex + Neovim + shell 시험 세션'
+    print 'wt --prepare [프로젝트 경로]    세션만 만들고 attach 명령 표시'
+    print 'Ghostty의 tmux 밖에서 실행. TUIOS 안에서는 Ctrl-b p 메뉴.'
+    exit ;;
+esac
+
+# Keep future daemons and clients from inheriting a runner's no-color flag.
+unset NO_COLOR
+
+prepare=false
+if [[ "${1:-}" == --prepare ]]; then
+  prepare=true
+  shift
+fi
+if [[ -n "$TUIOS_SESSION" || -n "$TMUX" ]] && ! $prepare; then
+  print -u2 '중첩을 피하려면 Ghostty의 새 창에서 wt를 실행하세요.'
+  exit 1
+fi
+root=$(git -C "${1:-$PWD}" rev-parse --show-toplevel 2>/dev/null) || {
+  if (( $# )); then
+    print -u2 'Git 프로젝트 경로를 지정하세요.'
+    exit 1
+  fi
+  root=$(project_picker) || exit 0
+  [[ -n "$root" ]] || exit 0
+}
+cd "$root"
+digest=$(print -rn -- "$root" | shasum -a 256)
+slug=${root:t}
+slug=${slug//[^a-zA-Z0-9_-]/_}
+legacy_session="trial-${slug}-${digest[1,10]}"
+main=$(git worktree list --porcelain | sed -n '1s/^worktree //p')
+project=${main:t}
+project=${project//[^a-zA-Z0-9._-]/_}
+[[ -n "$project" && "$project" != . && "$project" != .. ]] || project=project
+default_session=$project
+if [[ "$root" != "$main" ]]; then
+  worktree=${root:t}
+  worktree=${worktree//[^a-zA-Z0-9._-]/_}
+  default_session+=" · ${worktree}"
+fi
+state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-tuios
+project_record=$state_dir/projects/${digest%% *}
+sessions=$(tuios ls --json)
+session_id=
+[[ ! -f "$project_record" ]] || session_id=$(<"$project_record")
+# CLI -s and attach accept names in 0.8.5; resolve the stored identity each time.
+session=$(print -r -- "$sessions" | jq -r --arg id "$session_id" \
+  '.[] | select(.id == $id) | .name')
+if [[ -z "$session" ]]; then
+  session=$(print -r -- "$sessions" | jq -r --arg name "$legacy_session" \
+    '.[] | select(.name == $name) | .name')
+fi
+if [[ -z "$session" ]]; then
+  # Adopt a uniquely matching renamed worktree session created before ID tracking.
+  session=$(print -r -- "$sessions" | jq -r --arg root "$root" \
+    '[.[] | select(.worktree.path == $root)] | if length == 1 then .[0].name else empty end')
+fi
+
+if [[ -z "$session" ]]; then
+  session=$default_session
+  suffix=2
+  # A readable name is not an identity: another path may have the same basename.
+  while print -r -- "$sessions" | jq -e --arg name "$session" 'any(.[]; .name == $name)' >/dev/null; do
+    session="${default_session}-${suffix}"
+    (( suffix++ ))
+  done
+  tuios new "$session" --detach --no-animations
+  # dev holds agent/editor; terminal has its own full-screen shell.
+  bootstrap=$(tuios list-windows -s "$session" --json | jq -er '.focused_window_id')
+  tuios set-workspace-name 1 dev -s "$session" >/dev/null
+  tuios set-workspace-name 2 terminal -s "$session" >/dev/null
+  agent=$(tuios new-window -s "$session" agent --workspace 1 --cwd "$root" --no-focus --print-id -- "$script" app codex)
+  # Only replace the unused bootstrap shell of this newly created session.
+  tuios run-command -s "$session" CloseWindow "$bootstrap" >/dev/null
+  tuios new-window -s "$session" editor --workspace 1 --cwd "$root" --no-focus -- "$script" app nvim >/dev/null
+  tuios new-window -s "$session" shell --workspace 2 --cwd "$root" --no-focus -- "$script" app /bin/zsh >/dev/null
+  # A picker switch restores an existing headless session without startup tiling.
+  # Leave geometry to after-attach, when the client has a real viewport.
+  session_id=$(tuios ls --json | jq -er --arg name "$session" '.[] | select(.name == $name) | .id')
+  pending_dir=${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles-tuios/pending
+  mkdir -p "$pending_dir"
+  print -r -- "$agent" > "$pending_dir/$session_id"
+  tuios focus-window -s "$session" "$agent" >/dev/null
+fi
+session_id=$(tuios ls --json | jq -er --arg name "$session" '.[] | select(.name == $name) | .id')
+mkdir -p "$state_dir/projects"
+record_tmp=$(mktemp "$state_dir/projects/.record.XXXXXX")
+print -r -- "$session_id" > "$record_tmp"
+mv -f -- "$record_tmp" "$project_record"
+if $prepare; then
+  print -r -- "tuios attach ${(q)session} --no-animations --terminal-mode"
+else
+  exec tuios attach "$session" --no-animations --terminal-mode
+fi

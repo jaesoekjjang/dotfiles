@@ -1,0 +1,8 @@
+#!/bin/zsh
+
+# source 시에는 현재 셸을 갱신하고, 실행 시에는 새 대화형 셸로 전환합니다.
+if [[ "$ZSH_EVAL_CONTEXT" == *:file ]]; then
+  source "$HOME/.zshrc"
+else
+  exec /bin/zsh -i
+fi

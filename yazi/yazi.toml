@@ -1,0 +1,6 @@
+[opener]
+edit = [{ run = "edit_files -- \"$@\"", block = true, desc = "editor" }]
+edit_vscode = [{ run = "code \"$@\"", orphan = true, desc = "VSCode" }]
+
+[mgr]
+show_hidden = true

@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+"""Read-only checks for the installed dotfiles workflow."""
+import argparse
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--json", action="store_true", help="machine-readable results")
+parser.add_argument("--cli-only", action="store_true", help="skip desktop checks")
+parser.add_argument("--no-agents", action="store_true", help="skip agent checks")
+args = parser.parse_args()
+root = Path(__file__).resolve().parent.parent
+home = Path.home()
+checks = []
+
+
+def result(name, status, detail):
+    checks.append({"name": name, "status": status, "detail": detail})
+
+
+def version(command):
+    try:
+        return subprocess.check_output(command, stderr=subprocess.STDOUT, text=True, timeout=5).strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+commands = "git zsh bat eza rg fd fzf yazi zoxide atool 7zz tmux tuios workmux fnm uv python3 node npm jq nvim tree-sitter gh glab".split()
+if not args.no_agents:
+    commands += ["codex", "claude"]
+for command in commands:
+    resolved = shutil.which(command)
+    result(command, "ok" if resolved else "error", resolved or "run install.zsh")
+
+python_health = version(["python3", "-c", "import pyexpat, ensurepip; print('ok')"])
+result("Python venv prerequisites", "ok" if python_health == "ok" else "error",
+       "imports available" if python_health == "ok" else "run install.zsh; preferred runtime is Python 3.13")
+
+node = version(["node", "--version"])
+match = re.match(r"v(\d+)", node)
+result("Node support", "ok" if match and int(match[1]) in (22, 24, 26) else "error",
+       f"{node or 'unavailable'}; dotfiles default: Node 24, project pins take precedence")
+git = version(["git", "--version"])
+match = re.search(r"(\d+)\.(\d+)\.(\d+)", git)
+patched = {43: 7, 44: 4, 45: 4, 46: 4, 47: 3, 48: 2, 49: 1, 50: 1}
+safe = False
+if match:
+    major, minor, patch = map(int, match.groups())
+    safe = major > 2 or major == 2 and (minor > 50 or minor in patched and patch >= patched[minor])
+result("Git CVE-2025-48384", "ok" if safe else "error", git or "unavailable")
+tuios = version(["tuios", "--version"])
+result("TUIOS compatibility", "ok" if "version 0.9.1 " in tuios else "warn",
+       tuios.splitlines()[0] if tuios else "unavailable; current workflow tested with 0.9.1")
+
+for line in (root / "bootstrap/plugins.tsv").read_text().splitlines():
+    if not line or line.startswith("#"):
+        continue
+    repository, revision, relative = line.split("\t")
+    target = home / relative
+    present = target.is_dir()
+    result(repository, "ok" if present else "error", str(target))
+
+links = {
+    ".zshenv": "zsh/.zshenv", ".zshrc": "zsh/.zshrc", ".zprofile": "zsh/.zprofile",
+    ".tmux.conf": "tmux/.tmux.conf", ".gitconfig": "git/.gitconfig",
+    ".config/nvim": "nvim", ".config/yazi": "yazi",
+    ".config/workmux/config.yaml": "workmux/config.yaml",
+}
+for destination, source in links.items():
+    target = home / destination
+    valid = target.is_symlink() and target.exists() and os.path.samefile(target, root / source)
+    result(destination, "ok" if valid else "error", "linked" if valid else "run setup.zsh")
+
+runtime = home / "Library/Application Support/tuios/config.toml"
+result("TUIOS local config", "ok" if runtime.is_file() and not runtime.is_symlink() else "error",
+       str(runtime) + "; run setup.zsh to migrate a symlink")
+secret = home / ".secrets.zsh"
+result("secrets permissions", "ok" if secret.is_file() and secret.stat().st_mode & 0o777 == 0o600 else "error",
+       "expected 0600; run setup.zsh")
+result("DOTFILES", "ok" if os.environ.get("DOTFILES") == str(root) else "warn",
+       os.environ.get("DOTFILES", "unset") + "; start a new shell after setup")
+
+data = Path(os.environ.get("XDG_DATA_HOME", home / ".local/share")) / "nvim"
+for name in ["stylua", "prettierd", "prettier", "clang-format", "autopep8"]:
+    candidate = data / "mason/bin" / name
+    installed = shutil.which(name) or os.access(candidate, os.X_OK)
+    result("formatter " + name, "ok" if installed else "warn", "available" if installed else "open Neovim or run :MasonToolsInstall")
+if not args.no_agents:
+    hooks = home / ".codex/hooks.json"
+    result("Codex TUIOS hooks", "ok" if hooks.exists() and "tuios" in hooks.read_text() else "warn",
+           "tuios integration install codex; review hooks on first Codex start")
+if not args.cli_only:
+    for name in ["aerospace", "borders"]:
+        resolved = shutil.which(name)
+        result(name, "ok" if resolved else "warn", resolved or "install desktop profile")
+    result("Ghostty", "ok" if Path("/Applications/Ghostty.app").is_dir() else "warn", "/Applications/Ghostty.app")
+
+if args.json:
+    print(json.dumps(checks, ensure_ascii=False, indent=2))
+else:
+    for check in checks:
+        print(f"{check['status'].upper():5} {check['name']}: {check['detail']}")
+sys.exit(1 if any(check["status"] == "error" for check in checks) else 0)

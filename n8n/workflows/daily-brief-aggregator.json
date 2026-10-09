@@ -1,0 +1,151 @@
+{
+  "name": "아침 브리핑 데이터 수집",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24,
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "1",
+      "name": "매일 9시",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "await new Promise(r => setTimeout(r, 600));\nreturn [{ json: { source: 'stopping_points', count: 3 } }];\n"
+      },
+      "id": "2",
+      "name": "어제 중단점 복원",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "await new Promise(r => setTimeout(r, 900));\nreturn [{ json: { source: 'gcal', events: 4 } }];\n"
+      },
+      "id": "3",
+      "name": "오늘 캘린더 불러오기",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "await new Promise(r => setTimeout(r, 1000));\nreturn [{ json: { source: 'linear', issues: 5 } }];\n"
+      },
+      "id": "4",
+      "name": "Linear 할당 이슈",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "await new Promise(r => setTimeout(r, 800));\nreturn [{ json: { source: 'git', commits: 8 } }];\n"
+      },
+      "id": "5",
+      "name": "어제 Git 활동 스캔",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "await new Promise(r => setTimeout(r, 500));\nreturn [{ json: { source: 'compose', sections: 4 } }];\n"
+      },
+      "id": "6",
+      "name": "브리핑 조립",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "매일 9시": {
+      "main": [
+        [
+          {
+            "node": "어제 중단점 복원",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "어제 중단점 복원": {
+      "main": [
+        [
+          {
+            "node": "오늘 캘린더 불러오기",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "오늘 캘린더 불러오기": {
+      "main": [
+        [
+          {
+            "node": "Linear 할당 이슈",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Linear 할당 이슈": {
+      "main": [
+        [
+          {
+            "node": "어제 Git 활동 스캔",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "어제 Git 활동 스캔": {
+      "main": [
+        [
+          {
+            "node": "브리핑 조립",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

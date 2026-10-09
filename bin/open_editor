@@ -1,0 +1,17 @@
+#!/usr/bin/env zsh
+
+file="${1:?file required}"
+line="${2:-1}"
+editor=("${(@Q)${(z)EDITOR:-nvim}}")
+
+case "${editor[1]:t}" in
+  vim|nvim)
+    exec "${0:A:h}/edit_files" +"$line" -- "$file"
+    ;;
+  code|cursor)
+    exec "${editor[@]}" -g "$file:$line"
+    ;;
+  *)
+    exec "${editor[@]}" "$file"
+    ;;
+esac

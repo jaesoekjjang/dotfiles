@@ -1,0 +1,229 @@
+#!/usr/bin/env zsh
+
+emulate -LR zsh
+setopt pipefail
+
+workspace_script=${0:A}
+project_cache_file=${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles-workspace/projects.tsv
+
+fail() { print -u2 -- "$*"; return 1; }
+
+require_repo() {
+  git rev-parse --show-toplevel >/dev/null 2>&1 || fail 'Git 저장소 안에서 실행하세요.'
+}
+
+main_root() {
+  git -C "$1" worktree list --porcelain 2>/dev/null | sed -n '1s/^worktree //p'
+}
+
+project_paths() {
+  local projects_dir=${WORKSPACE_PROJECTS_DIR:-$HOME/projects}
+  local repo entry root main label branch
+  local -A seen
+  {
+    # Dotfiles lives outside ~/projects on this machine.
+    [[ -d "${workspace_script:h:h}/.git" ]] && print -r -- "${workspace_script:h:h}"
+    if [[ -d "$projects_dir" ]]; then
+      fd --hidden --type d --max-depth 4 --prune --glob .git \
+        --exclude node_modules --exclude vendor "$projects_dir" | sed 's@/\.git/*$@@'
+    fi
+  } | sort -u | while IFS= read -r repo; do
+    main= root= label= branch=
+    # Git lists linked worktrees even when they live outside the search directory.
+    while IFS= read -r -d '' entry; do
+      case "$entry" in
+        'worktree '*)
+          root=${entry#worktree }
+          [[ -n "$main" ]] || main=$root
+          label=${main:t}
+          [[ "$root" == "$main" ]] || label+=" / ${root:t}"
+          branch='detached HEAD'
+          ;;
+        'branch '*) branch=${entry#branch refs/heads/} ;;
+        '')
+          if [[ -d "$root" && -z "${seen[$root]:-}" ]]; then
+            seen[$root]=1
+            printf '%s\t%s\t%s\n' "$root" "$label" "$branch"
+          fi
+          ;;
+      esac
+    done < <(git -C "$repo" worktree list --porcelain -z 2>/dev/null)
+  done
+}
+
+project_cache() {
+  setopt localtraps
+  local cache_dir=${project_cache_file:h} lock_fd temporary
+  local -A metadata
+  zmodload zsh/datetime
+  zmodload zsh/stat
+  zmodload zsh/system
+  if [[ "$1" != --refresh ]] && zstat -H metadata "$project_cache_file" 2>/dev/null &&
+    (( EPOCHSECONDS >= metadata[mtime] && EPOCHSECONDS - metadata[mtime] < 30 )); then
+    cat "$project_cache_file"
+    return
+  fi
+  mkdir -p "$cache_dir" || return
+  : >> "$cache_dir/projects.lock" || return
+  if ! zsystem flock -t 3 -f lock_fd "$cache_dir/projects.lock"; then
+    [[ -r "$project_cache_file" ]] && cat "$project_cache_file"
+    return 0
+  fi
+  # Recheck after waiting for another picker to finish its refresh.
+  if [[ "$1" != --refresh ]] && zstat -H metadata "$project_cache_file" 2>/dev/null &&
+    (( EPOCHSECONDS >= metadata[mtime] && EPOCHSECONDS - metadata[mtime] < 30 )); then
+    cat "$project_cache_file"
+    zsystem flock -u "$lock_fd"
+    return
+  fi
+  temporary=$(mktemp "$cache_dir/projects.XXXXXX") || return
+  trap '[[ -n "$temporary" ]] && rm -f -- "$temporary"' EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' HUP TERM
+  if project_paths > "$temporary"; then
+    mv -f "$temporary" "$project_cache_file"
+  else
+    rm -f "$temporary"
+  fi
+  zsystem flock -u "$lock_fd"
+  [[ -r "$project_cache_file" ]] && cat "$project_cache_file"
+}
+
+project() {
+  local root session slug digest pane
+  if (( $# )); then
+    root=$(main_root "$1")
+  else
+    local reload="${(q)workspace_script} _projects"
+    root=$({ [[ -r "$project_cache_file" ]] && cat "$project_cache_file"; } |
+      fzf --prompt='project> ' --header='Enter: 열기 · Ctrl-r: 새로고침 · Esc: 취소' \
+        --delimiter=$'\t' --with-nth=2,3 --nth=1,2 --extended \
+        --bind "load:reload-sync($reload)+unbind(load)" \
+        --bind "ctrl-r:reload-sync($reload --refresh)") || return 0
+    root=${root%%$'\t'*}
+    [[ -n "$root" ]] && root=$(main_root "$root")
+  fi
+  [[ -n "$root" && -d "$root" ]] || { fail 'Git 프로젝트를 찾을 수 없습니다.'; return 1; }
+  slug=${root:t}
+  slug=${slug//[^a-zA-Z0-9_-]/_}
+  digest=$(print -rn -- "$root" | shasum -a 256)
+  session="p-${slug}-${digest[1,10]}"
+  if ! tmux has-session -t "=$session" 2>/dev/null; then
+    pane=$(tmux new-session -d -P -F '#{pane_id}' -s "$session" -n main -c "$root" nvim) || return
+    tmux split-window -h -t "$pane" -c "$root" || return
+    tmux select-pane -t "$pane"
+  fi
+  if [[ -n "$TMUX" ]]; then
+    if [[ -n "$WORKSPACE_CLIENT" ]]; then
+      tmux switch-client -c "$WORKSPACE_CLIENT" -t "=$session"
+    else
+      tmux switch-client -t "=$session"
+    fi
+  else
+    tmux attach-session -t "=$session"
+  fi
+}
+
+require_tmux() {
+  [[ -n "$TMUX" ]] || fail '먼저 w project로 프로젝트 세션을 여세요.'
+}
+
+new_task() {
+  require_repo && require_tmux || return 1
+  if (( $# )); then
+    workmux add "$@"
+  else
+    local branch
+    read -r 'branch?작업 branch 이름 (예: feat/search): '
+    [[ -n "$branch" ]] || return 0
+    workmux add "$branch" --prompt-editor
+  fi
+}
+
+open_task() {
+  require_repo && require_tmux || return 1
+  local handle
+  if (( $# )); then
+    workmux open --continue "$@"
+  else
+    handle=$(workmux list --json | jq -r '.[] | [.handle, .branch, .path] | @tsv' |
+      fzf --delimiter=$'\t' --with-nth=1,2 --prompt='worktree> ' --header='Enter: 열기 · 닫힌 작업은 agent 대화 재개') || return 0
+    [[ -n "$handle" ]] && workmux open --continue "${handle%%$'\t'*}"
+  fi
+}
+
+resume_agent() {
+  require_repo || return 1
+  if [[ -z "$TMUX" ]]; then
+    codex resume "$@"
+    return
+  fi
+  local root digest window target pane
+  root=$(git rev-parse --show-toplevel) || return
+  pane=$(tmux list-panes -s -F $'#{pane_current_path}\t#{pane_current_command}\t#{pane_id}' |
+    awk -F '\t' -v root="$root" '$1 == root && $2 == "codex" {print $3; exit}')
+  if [[ -n "$pane" ]]; then
+    tmux select-window -t "$pane"
+    tmux select-pane -t "$pane"
+    return
+  fi
+  digest=$(print -rn -- "$root" | shasum -a 256)
+  window="agent-${digest[1,10]}"
+  target=$(tmux list-windows -F '#{window_name} #{window_id}' | awk -v name="$window" '$1 == name {print $2; exit}')
+  if [[ -n "$target" ]]; then
+    tmux select-window -t "$target"
+  else
+    local -a command=(codex resume "$@")
+    target=$(tmux new-window -P -F '#{window_id}' -n "$window" -c "$root" "${(j: :)${(@q)command}}") || return
+    tmux set-window-option -t "$target" automatic-rename off
+  fi
+}
+
+review() {
+  require_repo || return 1
+  local root
+  root=$(git rev-parse --show-toplevel) || return
+  if [[ -n "$TMUX" ]]; then
+    tmux new-window -n review -c "$root" 'nvim -c CodeDiff'
+  else
+    nvim -c CodeDiff
+  fi
+}
+
+menu() {
+  local selection
+  selection=$(printf '%s\n' \
+    'project  프로젝트 선택' \
+    'new      새 작업 + agent' \
+    'open     기존 worktree 열기' \
+    'resume   현재 저장소 agent 재개' \
+    'review   현재 worktree 변경 검토' \
+    'status   전체 agent dashboard' \
+    'sidebar  agent sidebar 토글' \
+    'recover  충돌·재부팅 후 작업 복구' |
+    fzf --prompt='workspace> ' --header='프로젝트 → 작업 → agent → 검토 · Esc: 취소') || return 0
+  [[ -n "$selection" ]] && dispatch "${selection%% *}"
+}
+
+dispatch() {
+  local action=${1:-menu}
+  (( $# )) && shift
+  case "$action" in
+    menu) menu ;;
+    project) project "$@" ;;
+    _projects) project_cache "$@" ;;
+    new) new_task "$@" ;;
+    open) open_task "$@" ;;
+    resume) resume_agent "$@" ;;
+    review) review ;;
+    status) workmux dashboard "$@" ;;
+    sidebar) require_tmux && workmux sidebar "$@" ;;
+    recover) workmux resurrect "$@" ;;
+    help|--help|-h)
+      print 'w [project [path] | new [branch/options] | open [handle] | resume [options] | review | status | sidebar | recover]'
+      print '인자 없이 실행하면 메뉴. tmux에서는 prefix+p.' ;;
+    *) fail "알 수 없는 작업: $action (w help 참고)" ;;
+  esac
+}
+
+dispatch "$@"

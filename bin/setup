@@ -1,0 +1,5 @@
+#!/bin/zsh
+
+set -eo pipefail
+
+exec "${0:A:h:h}/setup.zsh" "$@"

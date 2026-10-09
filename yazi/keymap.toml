@@ -1,0 +1,49 @@
+[mgr]
+prepend_keymap = [
+
+  # ##################
+  #       Yank
+  # ##################
+
+  { on = ["y", "y"], run = "yank", desc = "Yank" },
+  { on = ["y", "i"], run = ["escape --visual", "plugin system-clipboard -- files"], desc = "Copy image file to clipboard" },
+  { on = ["y", "f"], run = ["escape --visual", "plugin system-clipboard -- files"], desc = "Copy files to macOS clipboard" },
+  { on = ["y", "n"], run = ["escape --visual", "plugin system-clipboard -- filename"], desc = "Copy filename" },
+  { on = ["y", "a"], run = ["escape --visual", "plugin system-clipboard -- path"], desc = "Copy absolute path" },
+  { on = ["y", "r"], run = ["escape --visual", "plugin system-clipboard -- relative"], desc = "Copy relative path" },
+
+  # ##################
+  #       Go to
+  # ##################
+
+  { on = ["g", "r"], run = "shell --block -- bash ~/.config/yazi/scripts/navigate.sh git-root", desc = "Go to git root" },
+  { on = ["g", "d"], run = "cd ~/Downloads", desc = "Go to Downloads" },
+  { on = ["g", "."], run = "cd $DOTFILES", desc = "Go to dotfiles repo" },
+  { on = ["g", ","], run = "cd ~/.config/yazi", desc = "Go to yazi config" },
+  { on = ["g", "p"], run = "shell --block -- bash ~/.config/yazi/scripts/navigate.sh project", desc = "Go to git project/worktree" },
+
+  # ##################
+  #       Open
+  # ##################
+
+  { on = ["o", "v"], run = 'shell --block -- edit_files -- %s', desc = "Open with editor" },
+  { on = ["o", "c"], run = 'shell --orphan -- code %s', desc = "Open with VSCode" },
+  { on = ["o", "b"], run = 'shell --orphan -- browser_app="${BROWSER:-Google Chrome}"; open -a "${browser_app#open -a }" %s', desc = "Open in browser" },
+  { on = ["o", "f"], run = 'shell "open -R \"$@\"" --confirm', desc = "Open in Finder" },
+  { on = ["o", "k"], run = 'shell --block -- bash ~/.config/yazi/scripts/navigate.sh ghostty %h', desc = "Open hovered directory in Ghostty" },
+  { on = ["o", "t", "t"], run = 'shell --block -- bash ~/.config/yazi/scripts/navigate.sh tmux-window %h', desc = "Open tmux window in current session" },
+  { on = ["o", "t", "c"], run = 'shell --block -- bash ~/.config/yazi/scripts/navigate.sh tmux-pick-window %h', desc = "Open tmux window in selected session" },
+  { on = ["o", "t", "s"], run = 'shell --block -- bash ~/.config/yazi/scripts/navigate.sh tmux-switch', desc = "Switch to selected tmux session" },
+  { on = ["o", "t", "n"], run = 'shell --block -- bash ~/.config/yazi/scripts/navigate.sh tmux-session %h', desc = "Open new tmux session" },
+
+  # ##################
+  #     Archive
+  # ##################
+
+  { on = ["z", "z"], run = 'shell --block -- bash ~/.config/yazi/scripts/archive.sh zip %s', desc = "Compress zip" },
+  { on = ["z", "g"], run = 'shell --block -- bash ~/.config/yazi/scripts/archive.sh tar.gz %s', desc = "Compress tar.gz" },
+  { on = ["z", "t"], run = 'shell --block -- bash ~/.config/yazi/scripts/archive.sh tar %s', desc = "Compress tar" },
+  { on = ["z", "a"], run = 'shell --block -- bash ~/.config/yazi/scripts/archive.sh tar.gz %s', desc = "Compress tar.gz" },
+  { on = ["z", "x"], run = 'shell --block -- bash ~/.config/yazi/scripts/archive.sh extract %s', desc = "Extract here" },
+  { on = ["z", "X"], run = 'shell --block -- bash ~/.config/yazi/scripts/archive.sh extract-dir %s', desc = "Extract to folder" }
+]

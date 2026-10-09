@@ -1,0 +1,20 @@
+[core]
+	eol = native
+	ignorecase = false
+	pager = delta
+	editor = nvim
+[init]
+	defaultBranch = main
+[delta]
+	side-by-side = true
+[fetch]
+	prune = true
+[rebase]
+	updateRefs = true
+[include]
+	path = ~/.gitconfig.local
+[coderabbit]
+	machineId = cli/71b768b4e6144782a5a0e22848c012de
+[credential "https://gitlab.gabia.com"]
+	helper =
+	helper = !glab auth git-credential
