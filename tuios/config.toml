@@ -531,9 +531,11 @@ description = '새 workspace 열기'
 
 [[keybindings.command]]
 key = 'prefix+!'
-type = 'shell'
-command = 'tuios-trial break-pane'
-description = '현재 pane을 새 workspace로 분리하고 이동'
+type = 'popup'
+command = 'env TUIOS_PICKER_POPUP=1 tuios-picker move-pane'
+description = '현재 pane을 보낼 workspace 선택'
+width = '95%'
+height = '90%'
 
 [[keybindings.command]]
 key = 'prefix+p'

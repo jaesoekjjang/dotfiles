@@ -160,6 +160,9 @@ func TestSessionWorkspaceReadsOverlapButKeepOrderAndBoundProcesses(t *testing.T)
 		release[i] = make(chan struct{})
 	}
 	s.run = func(ctx context.Context, _ string, args ...string) ([]byte, error) {
+		if args[0] == "list-windows" {
+			return []byte(`{"windows":[]}`), nil
+		}
 		var i int
 		if _, err := fmt.Sscan(args[2], &i); err != nil {
 			return nil, err

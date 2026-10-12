@@ -39,6 +39,7 @@ type actionMsg struct {
 }
 
 type model struct {
+	agentRefreshing                        bool
 	service                                controller
 	mode                                   string
 	loadGeneration                         int
@@ -92,6 +93,10 @@ func newModel(service controller, mode string) *model {
 	} else {
 		m.search.Placeholder = "세션 / workspace 검색"
 	}
+	if mode == "move-pane" {
+		m.showPreview = false
+		m.search.Placeholder = "보낼 workspace 검색"
+	}
 	m.viewport.SoftWrap = false
 	m.viewport.FillHeight = true
 	m.search.Focus()
@@ -102,7 +107,7 @@ func (m *model) Init() tea.Cmd {
 	if m.standalone {
 		return nil
 	}
-	return tea.Batch(m.search.Focus(), m.reload())
+	return tea.Batch(m.search.Focus(), m.reload(), nextAgentTick())
 }
 func (m *model) reload() tea.Cmd {
 	m.loading = true
@@ -263,6 +268,32 @@ func (m *model) openModal(kind string, row tuios.Row) tea.Cmd {
 func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	defer func() { m.resize(); m.keepVisible() }()
 	switch msg := message.(type) {
+	case agentTick:
+		if m.loading || m.busy || m.modal != "" || m.agentRefreshing {
+			return m, nextAgentTick()
+		}
+		m.agentRefreshing = true
+		mode := m.mode
+		return m, tea.Batch(nextAgentTick(), func() tea.Msg {
+			snapshot, err := m.service.Snapshot(mode)
+			return agentRefresh{snapshot, err}
+		})
+	case agentRefresh:
+		m.agentRefreshing = false
+		if msg.err != nil || m.loading || m.busy || m.modal != "" {
+			return m, nil
+		}
+		counts := map[string]tuios.AgentCounts{}
+		for _, row := range msg.snapshot.Rows {
+			counts[row.ID] = row.Agents
+		}
+		for i := range m.rows {
+			if a, ok := counts[m.rows[i].ID]; ok {
+				m.rows[i].Agents = a
+			}
+		}
+		m.refilter(m.selectedID(), false)
+		return m, nil
 	case projectsMsg:
 		if !m.projectOpen || msg.generation != m.projectGeneration {
 			return m, nil
@@ -471,6 +502,9 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			var cmd tea.Cmd
 			m.prompt, cmd = m.prompt.Update(msg)
 			return m, cmd
+		}
+		if m.mode == "move-pane" {
+			return m, m.updateMove(msg)
 		}
 		before := m.selectedID()
 		switch key {

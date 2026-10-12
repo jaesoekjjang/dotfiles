@@ -33,6 +33,9 @@ func visible(w workspace) bool { return w.Current || w.Count > 0 || w.Name != ""
 
 func (s *Service) Snapshot(mode string) (Snapshot, error) {
 	var snapshot Snapshot
+	if mode == "move-pane" {
+		return s.moveSnapshot()
+	}
 	if mode == "sessions" {
 		var sessions []session
 		if err := s.command(&sessions, "ls"); err != nil {
@@ -93,11 +96,15 @@ func (s *Service) Snapshot(mode string) (Snapshot, error) {
 			if item.Name == "" {
 				continue
 			}
-			snapshot.Rows = append(snapshot.Rows, Row{ID: w.ID, Kind: "session", Label: first(w.Label, item.Display, item.Name), Session: item.Name, SessionID: w.ID, Panes: w.Count, Current: w.ID == current})
+			var agents AgentCounts
+			for _, tab := range children[i].Items {
+				agents.add(tab.Agents)
+			}
+			snapshot.Rows = append(snapshot.Rows, Row{Agents: agents, ID: w.ID, Kind: "session", Label: first(w.Label, item.Display, item.Name), Session: item.Name, SessionID: w.ID, Panes: w.Count, Current: w.ID == current})
 			for _, tab := range ordered(children[i]) {
 				if tab.Count > 0 || w.ID == current && visible(tab) {
 					snapshot.Rows = append(snapshot.Rows, Row{
-						ID: fmt.Sprintf("ws:%s:%d", w.ID, tab.Number), Parent: w.ID, Kind: "workspace", Label: first(tab.Name, "이름 없음"),
+						Agents: tab.Agents, ID: fmt.Sprintf("ws:%s:%d", w.ID, tab.Number), Parent: w.ID, Kind: "workspace", Label: first(tab.Name, "이름 없음"),
 						Session: item.Name, SessionID: w.ID, Number: tab.Number, Panes: tab.Count, Current: w.ID == current && tab.Current})
 				}
 			}
@@ -117,11 +124,11 @@ func (s *Service) Snapshot(mode string) (Snapshot, error) {
 				if tab.Current {
 					snapshot.Current = id
 				}
-				snapshot.Rows = append(snapshot.Rows, Row{ID: id, Kind: "workspace", Label: tab.Name, Number: tab.Number, Session: s.Target, Panes: tab.Count, Current: tab.Current})
+				snapshot.Rows = append(snapshot.Rows, Row{Agents: countsFor(panes, tab.Number, s.Popup), ID: id, Kind: "workspace", Label: tab.Name, Number: tab.Number, Session: s.Target, Panes: tab.Count, Current: tab.Current})
 				for _, p := range panes.Items {
 					if p.Number == tab.Number && p.ID != s.Popup {
 						snapshot.Rows = append(snapshot.Rows, Row{
-							ID: "pane:" + id + ":" + p.ID, Parent: id, Kind: "pane", Label: first(p.Custom, p.Display, p.Title, "pane"),
+							Agents: agentCounts(p.AgentState), ID: "pane:" + id + ":" + p.ID, Parent: id, Kind: "pane", Label: first(p.Custom, p.Display, p.Title, "pane"),
 							Command: first(p.Command, "shell"), Session: s.Target, Number: tab.Number, Panes: 1, Current: p.Focused})
 					}
 				}
@@ -148,6 +155,17 @@ func (s *Service) sessionWorkspaces(sessions []session) ([]workspaceList, error)
 		workers.Go(func() {
 			for i := range jobs {
 				errors[i] = s.command(&lists[i], "list-workspaces", "-s", sessions[i].Name)
+				if errors[i] != nil {
+					continue
+				}
+				var panes paneList
+				errors[i] = s.command(&panes, "list-windows", "-s", sessions[i].Name)
+				if errors[i] != nil {
+					continue
+				}
+				for j := range lists[i].Items {
+					lists[i].Items[j].Agents = countsFor(panes, lists[i].Items[j].Number, s.Popup)
+				}
 			}
 		})
 	}
@@ -267,6 +285,8 @@ func (s *Service) Act(action string, row Row, name string) (ActionResult, error)
 		return ActionResult{}, s.sendInput(row, name)
 	}
 	switch action {
+	case "move":
+		return s.movePane(row)
 	case "enter":
 		if row.Kind == "pane" {
 			return ActionResult{Exit: true}, s.command(nil, "focus-window", strings.SplitN(row.ID, ":", 3)[2], "-s", row.Session)

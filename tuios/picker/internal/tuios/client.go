@@ -17,6 +17,7 @@ import (
 )
 
 type Row struct {
+	Agents                                               AgentCounts
 	ID, Parent, Kind, Label, Command, Session, SessionID string
 	Number, Panes                                        int
 	Current                                              bool
@@ -41,6 +42,7 @@ type Preview struct {
 }
 
 type Service struct {
+	MoveSource                          Row
 	ctx                                 context.Context
 	cancel                              context.CancelFunc
 	Target, Popup, Socket, State, Trial string
@@ -181,26 +183,28 @@ type session struct {
 	LastActive int64  `json:"last_active"`
 }
 type workspace struct {
-	Number  int      `json:"workspace"`
-	Name    string   `json:"name"`
-	Count   int      `json:"window_count"`
-	Current bool     `json:"current"`
-	Focused string   `json:"focused_window_id"`
-	History []string `json:"focus_history"`
+	Agents  AgentCounts `json:"-"`
+	Number  int         `json:"workspace"`
+	Name    string      `json:"name"`
+	Count   int         `json:"window_count"`
+	Current bool        `json:"current"`
+	Focused string      `json:"focused_window_id"`
+	History []string    `json:"focus_history"`
 }
 type workspaceList struct {
 	Items []workspace `json:"workspaces"`
 	Order []int       `json:"order"`
 }
 type pane struct {
-	ID      string `json:"window_id"`
-	Number  int    `json:"workspace"`
-	Custom  string `json:"custom_name"`
-	Display string `json:"display_name"`
-	Title   string `json:"title"`
-	Command string `json:"foreground_cmd"`
-	Cwd     string `json:"cwd"`
-	Focused bool   `json:"focused"`
+	AgentState string `json:"agent_state"`
+	ID         string `json:"window_id"`
+	Number     int    `json:"workspace"`
+	Custom     string `json:"custom_name"`
+	Display    string `json:"display_name"`
+	Title      string `json:"title"`
+	Command    string `json:"foreground_cmd"`
+	Cwd        string `json:"cwd"`
+	Focused    bool   `json:"focused"`
 }
 type paneList struct {
 	Items []pane `json:"windows"`

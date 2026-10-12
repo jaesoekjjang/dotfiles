@@ -81,6 +81,9 @@ func panel(title, body string, width, height int) string {
 }
 
 func (m *model) helpLines() []string {
+	if m.mode == "move-pane" {
+		return []string{"C-n/p 이동 · Enter 보내고 따라가기 · Esc 취소"}
+	}
 	if m.folderEditing {
 		if m.projectOpen {
 			return []string{"C-n/p 이동 · Enter 선택 · Esc 목록 닫기"}
@@ -210,7 +213,7 @@ func (m *model) rowView(row tuios.Row, width int, selected bool) string {
 	}
 	label := row.Label
 	prefix := ""
-	if row.Parent == "" {
+	if row.Parent == "" && row.Kind != "new-workspace" {
 		arrow := "▸"
 		if m.expanded[row.ID] {
 			arrow = "▾"
@@ -221,6 +224,9 @@ func (m *model) rowView(row tuios.Row, width int, selected bool) string {
 		}
 	} else {
 		prefix = "  └ "
+		if row.Kind == "new-workspace" {
+			prefix = ""
+		}
 		if row.Kind == "workspace" {
 			label = workspaceLabel(row)
 			if m.mode == "sessions" && strings.TrimSpace(m.search.Value()) != "" {
@@ -229,9 +235,22 @@ func (m *model) rowView(row tuios.Row, width int, selected bool) string {
 			}
 		}
 	}
-	badge := ""
+	badge := row.Agents.Label()
+	if row.Agents.Done > 0 {
+		status = green
+	} else if row.Agents.NeedsInput > 0 || row.Agents.Errored > 0 {
+		status = amber
+	} else if row.Agents.Working > 0 {
+		status = pointer
+	}
+	if selected {
+		status = status.Background(lipgloss.Color("#383c45"))
+	}
 	if row.Current {
-		badge = "current"
+		if badge != "" {
+			badge += " · "
+		}
+		badge += "current"
 	}
 	command := ""
 	if row.Command != "" {
@@ -239,7 +258,8 @@ func (m *model) rowView(row tuios.Row, width int, selected bool) string {
 	}
 	leftWidth := max(0, width-2)
 	if badge != "" {
-		leftWidth = max(0, leftWidth-9)
+		badge = fit(badge, max(0, width/2))
+		leftWidth = max(0, leftWidth-ansi.StringWidth(badge)-2)
 	}
 	label = fit(label, max(0, leftWidth-ansi.StringWidth(prefix)-ansi.StringWidth(command)))
 	left := secondary.Render(prefix) + highlighted(label, m.search.Value(), base, selected) + secondary.Render(command)
@@ -361,7 +381,9 @@ func (m *model) listView(width, height int) string {
 	if m.mode == "workspaces" {
 		title = "Workspaces"
 	}
-	if m.folderEditing {
+	if m.mode == "move-pane" {
+		title = "pane 이동: " + tuios.Clean(m.inputTarget)
+	} else if m.folderEditing {
 		title = "시작 폴더 변경"
 	} else if m.creating() {
 		title = "추가"
