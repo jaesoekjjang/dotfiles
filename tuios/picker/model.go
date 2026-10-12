@@ -18,8 +18,9 @@ type controller interface {
 	Act(string, tuios.Row, string) (tuios.ActionResult, error)
 }
 type loadedMsg struct {
-	snapshot tuios.Snapshot
-	err      error
+	snapshot   tuios.Snapshot
+	err        error
+	generation int
 }
 type previewRequest struct {
 	generation int
@@ -38,6 +39,7 @@ type actionMsg struct {
 type model struct {
 	service                                controller
 	mode                                   string
+	loadGeneration                         int
 	rows, visible                          []tuios.Row
 	expanded                               map[string]bool
 	index, offset                          int
@@ -49,6 +51,8 @@ type model struct {
 	previewLoading                         bool
 	modal                                  string
 	modalRow                               tuios.Row
+	creationChild                          tuios.Row
+	creationLocation                       string
 	status, anchor                         string
 }
 
@@ -88,8 +92,14 @@ func (m *model) Init() tea.Cmd {
 }
 func (m *model) reload() tea.Cmd {
 	m.loading = true
-	return func() tea.Msg { s, err := m.service.Snapshot(m.mode); return loadedMsg{s, err} }
+	m.loadGeneration++
+	generation, mode := m.loadGeneration, m.mode
+	return func() tea.Msg {
+		snapshot, err := m.service.Snapshot(mode)
+		return loadedMsg{snapshot: snapshot, err: err, generation: generation}
+	}
 }
+
 func (m *model) selected() (tuios.Row, bool) {
 	if m.index < 0 || m.index >= len(m.visible) {
 		return tuios.Row{}, false
@@ -126,6 +136,15 @@ func (m *model) move(step int, group bool) {
 	parent := m.visible[m.index].ID
 	if m.visible[m.index].Parent != "" {
 		parent = m.visible[m.index].Parent
+		// Moving backward from a child first reaches its own visible parent.
+		// If search hides it, keep traversing the groups in the result list.
+		if group && step < 0 {
+			if i := slices.IndexFunc(m.visible, func(r tuios.Row) bool { return r.ID == parent }); i >= 0 {
+				m.index = i
+				m.keepVisible()
+				return
+			}
+		}
 	}
 	for n := 1; n <= len(m.visible); n++ {
 		i := (m.index + step*n + len(m.visible)*n) % len(m.visible)
@@ -205,6 +224,9 @@ func (m *model) openModal(kind string, row tuios.Row) tea.Cmd {
 	m.modalRow = row
 	m.search.Blur()
 	m.prompt.Reset()
+	if strings.HasPrefix(kind, "create-") {
+		m.prompt.Placeholder = "이름"
+	}
 	switch kind {
 	case "rename":
 		m.prompt.Prompt = "새 이름 › "
@@ -213,6 +235,8 @@ func (m *model) openModal(kind string, row tuios.Row) tea.Cmd {
 		m.prompt.Prompt = "새 session › "
 	case "create-workspace":
 		m.prompt.Prompt = "새 workspace › "
+	case "create-pane":
+		m.prompt.Prompt = "새 pane › "
 	case "close":
 		m.prompt.Prompt = ""
 	}
@@ -229,6 +253,9 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		m.keepVisible()
 		return m, nil
 	case loadedMsg:
+		if msg.generation != 0 && msg.generation != m.loadGeneration {
+			return m, nil
+		}
 		m.loading = false
 		m.busy = false
 		if msg.err != nil {
@@ -283,12 +310,24 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.result.Exit {
 			return m, tea.Quit
 		}
+		m.status = ""
+		if m.creating() {
+			m.status = strings.TrimSpace(m.prompt.Value()) + " 생성됨"
+			if m.modalRow.ID != "" {
+				m.expanded[m.modalRow.ID] = true
+			}
+			m.modal = ""
+			m.prompt.Blur()
+			m.search.Focus()
+		}
+		if msg.result.Warning != "" {
+			m.status = msg.result.Warning
+		}
 		if msg.result.Selected != "" {
 			m.anchor = msg.result.Selected
 			m.search.Reset()
 			m.busy = true // Wait for the new row before accepting Enter to navigate.
 		}
-		m.status = ""
 		return m, m.reload()
 	case tea.KeyPressMsg:
 		key := msg.String()
@@ -301,6 +340,7 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		if m.modal != "" {
 			if key == "esc" || m.modal == "close" && (key == "n" || key == "enter") {
 				m.modal = ""
+				m.status = ""
 				m.prompt.Blur()
 				if m.standalone {
 					return m, tea.Quit
@@ -317,6 +357,20 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 					return m, m.perform("close", row, "")
 				}
 				return m, nil
+			}
+			if m.creating() {
+				if key == "tab" || key == "shift+tab" {
+					m.switchCreation()
+					return m, nil
+				}
+				if key == "enter" {
+					if strings.TrimSpace(m.prompt.Value()) == "" {
+						m.modal = ""
+						m.prompt.Blur()
+						return m, m.search.Focus()
+					}
+					return m, m.perform(m.modal, m.modalRow, strings.TrimSpace(m.prompt.Value()))
+				}
 			}
 			if key == "enter" {
 				action, row, name := m.modal, m.modalRow, strings.TrimSpace(m.prompt.Value())
@@ -337,14 +391,14 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		switch key {
 		case "esc":
 			return m, tea.Quit
-		case "ctrl+n", "down":
-			m.move(1, false)
-		case "ctrl+p", "up":
-			m.move(-1, false)
-		case "ctrl+j":
+		case "ctrl+n":
 			m.move(1, true)
-		case "ctrl+k":
+		case "ctrl+p":
 			m.move(-1, true)
+		case "ctrl+j", "down":
+			m.move(1, false)
+		case "ctrl+k", "up":
+			m.move(-1, false)
 		case "tab", "ctrl+o":
 			m.toggle(false)
 		case "ctrl+g":
@@ -374,10 +428,11 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.openModal("rename", row)
 			}
 		case "ctrl+a":
-			if m.mode == "sessions" {
-				return m, m.openModal("create-session", tuios.Row{})
+			if m.loading && len(m.rows) == 0 {
+				m.status = "목록을 불러오는 중입니다"
+				return m, nil
 			}
-			return m, m.openModal("create-workspace", tuios.Row{})
+			return m, m.openCreation()
 		case "enter":
 			if row, ok := m.selected(); ok {
 				return m, m.perform("enter", row, "")
@@ -395,6 +450,9 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		if before != m.selectedID() {
 			return m, m.requestPreview()
 		}
+		return m, nil
+	}
+	if m.busy {
 		return m, nil
 	}
 	value, before := m.search.Value(), m.selectedID()

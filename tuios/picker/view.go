@@ -83,14 +83,17 @@ func (m *model) helpLines() []string {
 	if m.modal == "close" {
 		return []string{"y 종료 · Enter / n / Esc 취소"}
 	}
-	if m.modal != "" {
+	if m.modal != "" && !m.creating() {
 		return []string{"Enter 저장 · Esc 취소"}
 	}
 	group := "session"
 	if m.mode == "workspaces" {
 		group = "WS"
 	}
-	items := []string{"Enter 이동", "C-n/p 행", "C-j/k " + group, "Tab/C-o 펼침", "C-g 전체", "C-u/d 스크롤", "C-a 추가", "C-r 이름", "C-x 종료", "C-/ 미리보기", "Esc 닫기"}
+	items := []string{"Enter 이동", "C-n/p " + group, "C-j/k 행", "Tab/C-o 펼침", "C-g 전체", "C-u/d 스크롤", "C-a 추가", "C-r 이름", "C-x 종료", "C-/ 미리보기", "Esc 닫기"}
+	if m.creating() {
+		items = []string{"Tab 종류 전환", "Enter 생성", "Esc 취소"}
+	}
 	var lines []string
 	line := ""
 	for _, item := range items {
@@ -115,7 +118,7 @@ type dimensions struct {
 
 func (m *model) dimensions() dimensions {
 	w, h := max(20, m.width-2), max(10, m.height-len(m.helpLines())-2)
-	if !m.showPreview {
+	if !m.showPreview || m.creating() {
 		return dimensions{leftW: w, leftH: h}
 	}
 	if m.width < 90 {
@@ -244,6 +247,25 @@ func (m *model) listView(width, height int) string {
 			}
 		}
 		lines = []string{"", bright.Render(row.Kind + " '" + tuios.Clean(label) + "' 종료?"), "", muted.Render(fmt.Sprintf("%d panes", row.Panes)), "", amber.Render("y 종료"), muted.Render("Enter / n / Esc 취소")}
+	} else if m.creating() {
+		root, child := "Session", "Workspace"
+		if m.mode == "workspaces" {
+			root, child = "Workspace", "Pane"
+		}
+		rootStyle, childStyle := muted, muted
+		if m.modalRow.ID == "" {
+			root, rootStyle = "[ "+root+" ]", pointer.Bold(true)
+		} else {
+			child, childStyle = "[ "+child+" ]", pointer.Bold(true)
+		}
+		lines = []string{rootStyle.Render(root) + "   " + childStyle.Render(child)}
+		if destination := m.creationDestination(); destination != "" {
+			lines = append(lines, muted.Render("위치  ")+bright.Render(tuios.Clean(destination)))
+		}
+		lines = append(lines, "", m.prompt.View())
+		if m.creationChild.ID == "" {
+			lines = append(lines, muted.Render("하위 생성: 먼저 "+m.creationParentKind()+" 선택"))
+		}
 	} else if m.modal != "" {
 		lines = []string{"", m.prompt.View(), "", muted.Render("Enter 저장 · Esc 취소")}
 	} else if m.loading && len(m.rows) == 0 {
@@ -260,6 +282,9 @@ func (m *model) listView(width, height int) string {
 	title := "Sessions"
 	if m.mode == "workspaces" {
 		title = "Workspaces"
+	}
+	if m.creating() {
+		title = "추가"
 	}
 	return panel(title, strings.Join(lines, "\n"), width, height)
 }
@@ -297,7 +322,14 @@ func (m *model) View() tea.View {
 			body = lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", right)
 		}
 	}
-	footer := muted.Render(fit(tuios.Clean(m.status), max(0, m.width-2)))
+	status := m.status
+	if m.loading {
+		if status != "" {
+			status += " · "
+		}
+		status += "목록 갱신 중…"
+	}
+	footer := muted.Render(fit(tuios.Clean(status), max(0, m.width-2)))
 	for _, line := range m.helpLines() {
 		footer += "\n" + normal.Render(line)
 	}

@@ -31,8 +31,8 @@ TUIOS의 대화형 zsh에서도 이 값을 제거한다. 기존 Codex 프로세�
 | `Ctrl-b z` | 현재 pane 확대 |
 | `Ctrl-b Ctrl-x` | 현재 session 종료 확인창 → 다른 session으로 이동 후 종료 (마지막 session이면 TUIOS 종료) |
 | `Ctrl-b &` | 현재 workspace 종료 확인창 → 모든 pane·이름 제거 후 이웃 workspace로 이동 |
-| `Ctrl-b s` | Go picker로 session 검색·선택 (Ctrl-a: 새 session) |
-| `Ctrl-b w` | Go picker로 workspace 검색·선택 (Ctrl-a: 새 workspace) |
+| `Ctrl-b s` | Go picker로 session 검색·선택 (Ctrl-a: 선택 레벨 추가) |
+| `Ctrl-b w` | Go picker로 workspace 검색·선택 (Ctrl-a: 선택 레벨 추가) |
 | `Ctrl-b n` / `Ctrl-b v` | 다음 / 이전 workspace (빈 무명 workspace는 건너뛰고 순환) |
 | `Ctrl-b Tab` / `Ctrl-b Shift-Tab` | 다음 / 이전 pane |
 | `Ctrl-b c` | 빈 workspace에 현재 pane 경로의 shell을 열고 이동 |
@@ -100,23 +100,24 @@ pane과 실행 중인 프로그램은 유지된다. 실제 등록은 `Ctrl-b .` 
 `Ctrl-b s/w`는 Go / Bubble Tea popup을 사용하고, 현재 session/workspace를 표시하며 시작 커서를 둔다.
 `s`는 현재 client의 최근 방문 순서로 session을 표시한다. 방문 이력이 없으면 데몬의 최근 활동 순서를 쓴다.
 `s`에서도 `Tab`/`Ctrl-o`로 session 아래 workspace를 펼치거나 접는다. 기본은 전체 펼침이다.
-`Ctrl-n/p`는 workspace 포함 한 줄씩, `Ctrl-j/k`는 session 행 단위로 이동한다.
+`Ctrl-n/p`는 session 행 단위로, `Ctrl-j/k`와 방향키는 workspace 포함 한 줄씩 이동한다.
 workspace 행에서 Enter를 누르면 해당 session의 그 workspace로 이동한다. 하위 workspace에서 `Ctrl-r`은 그 workspace의 이름을 바꾸고, `Ctrl-x`는 그 workspace의 종료 확인창을 연다.
 다른 session 아래에는 pane이 있는 workspace만 표시한다. 마지막 workspace를 종료한 뒤 TUIOS가 유지하는 빈 슬롯은 숨기고 session 행은 남긴다. 현재 session의 빈 workspace는 `w`에서 확인·관리할 수 있다.
 `s`는 세션 표시 이름과 workspace 이름·번호를 함께 검색한다. `anchorbase terminal`, `anchorbaseterminal`, `dotfiles terminal`로 같은 이름의 workspace를 구분해 바로 이동할 수 있다.
 검색 중에는 접힌 세션의 workspace도 찾으며 `anchorbase › 2 terminal`처럼 소속을 표시한다. 검색을 지우면 원래 펼침 상태로 돌아온다. 선택한 workspace의 내용만 미리 볼 수 있다.
-workspace만 검색된 결과에서도 `Ctrl-j/k`로 다른 세션의 결과로 이동할 수 있다.
+workspace만 검색된 결과에서도 `Ctrl-n/p`로 다른 세션의 결과로 이동할 수 있다.
 `w`는 현재 session의 workspace를 화면 배치 순서로 표시한다.
 새 workspace는 사용 중인 가장 큰 번호 뒤의 빈 슬롯에 만든다. 뒤쪽 슬롯이 다 찼으면 앞쪽의 가장 작은 빈 번호를 재사용한다. 이름만 있는 workspace와 현재 workspace도 사용 중으로 취급한다.
 pane 목록은 기본으로 모두 펼쳐져 있다. `Tab` 또는 `Ctrl-o`로 선택한 workspace의 pane 목록을 펼치거나 접는다. 하나의 UI 안에서 목록만 갱신한다. pane 행에서 `Tab` 또는 `Ctrl-o`를 누르면 부모 workspace로 접힌다.
-`Ctrl-n/p`는 pane 포함 한 줄씩, `Ctrl-j/k`는 다음/이전 workspace 행으로 이동한다. 검색 중에는 검색 결과에 있는 workspace만 이동한다.
+`Ctrl-n/p`는 다음/이전 workspace 행으로, `Ctrl-j/k`와 방향키는 pane 포함 한 줄씩 이동한다. 검색 중에는 검색 결과에 있는 workspace만 이동한다.
 workspace에서 `Enter`는 workspace로, pane에서 `Enter`는 해당 pane으로 바로 이동한다.
 pane 행에서 `Ctrl-r`은 그 pane의 이름을 바꾸고, `Ctrl-x`는 그 pane만 종료한다. 확인창에서 취소할 수 있으며 부모 workspace는 종료하지 않는다. picker 밖에서는 `Ctrl-b r`로 현재 pane 이름을 바꾼다. 검색은 펼쳐진 pane 이름도 포함한다.
 `s`·`w` popup은 화면의 95% × 90% 크기를 사용한다.
 Navigator처럼 왼쪽 목록 40%, 오른쪽 미리보기 60%로 나누고 검색은 위쪽, 키 안내는 두 패널 아래의 공통 footer에 둔다.
 한 줄 안내가 들어가지 않는 좁은 창에서는 footer를 여러 줄로 나눈다.
 `Ctrl-g`는 전체 펼치기/접기를 전환한다. 일부만 펼쳐져 있으면 전체를 펼치고, 모두 펼쳐져 있으면 전체를 접는다. 검색 여부와 관계없이 전체 목록에 적용한다.
-`Ctrl-n/p` 행 이동과 `Ctrl-j/k` 그룹 이동은 마지막에서 처음으로, 처음에서 마지막으로 순환한다. 검색 중에는 검색 결과 안에서 순환한다.
+`Ctrl-p`는 하위 행에서 먼저 자기 부모로 올라가고, 부모 행에서 누르면 이전 그룹으로 이동한다. 검색으로 부모가 숨겨진 경우에는 검색 결과의 이전 그룹으로 이동한다.
+`Ctrl-n/p` 그룹 이동과 `Ctrl-j/k` 행 이동은 마지막에서 처음으로, 처음에서 마지막으로 순환한다. 검색 중에는 검색 결과 안에서 순환한다.
 pane 수는 목록과 미리보기에서 생략하고 종료 확인에서 표시한다.
 `current`는 현재 session/workspace 또는 활성 pane을 뜻한다. 비활성 session 아래 workspace에는 현재 표시를 붙이지 않는다. pane 행은 들여쓰기로 구분한다. 상위 행은 밝고 굵게, 하위 행과 경로는 회색의 밝기 차이로 구분한다. 현재 위치는 초록색, 선택 커서는 청록색으로 표시한다.
 검색 결과 수는 검색줄 오른쪽에 둔다. 미리보기의 줄 번호 표시는 숨겨 위치 정보와 겹치지 않게 한다.
@@ -135,18 +136,18 @@ Enter는 결과로 이동만 하고, 결과가 없으면 창을 유지한다.
 이름 변경 후 검색어와 선택 대상을 유지한다. 이름이 검색 조건에서 벗어나면 가까운 검색 결과를 선택한다.
 다른 대상을 종료한 뒤에도 검색어를 유지하며 가까운 항목으로 이동한다.
 session 이름 변경은 표시 이름만 바꾸므로 CLI identity와 프로젝트 UUID 연결을 유지한다.
-추가는 `Ctrl-a`로 분리했다. session 추가는 표시 이름을 입력한 뒤 현재 경로에 shell 하나를 연다.
-생성 후에는 picker에 남아 새 session을 선택한다. 빈 이름 또는 Esc는 취소한다. Ctrl-c는 picker 전체를 닫는다. session의 실제 이름 변경은 `Ctrl-b $`,
+추가는 `Ctrl-a`로 생성창을 연다. 선택한 행과 같은 레벨이 기본이며, 생성창의 `Tab`/`Shift-Tab`으로 종류를 전환한다. `s`는 Session/Workspace, `w`는 Workspace/Pane을 선택할 수 있다. session 추가는 표시 이름을 입력한 뒤 현재 경로에 shell 하나를 연다.
+`Enter`는 생성 후 목록에서 새 항목을 선택한다. 빈 이름의 Enter 또는 Esc는 생성 취소다. Ctrl-c는 picker 전체를 닫는다. session의 실제 이름 변경은 `Ctrl-b $`,
 기존 session 관리 UI는 command palette (`Ctrl-b P`)의 session switcher에서 사용할 수 있다.
-`w`에서 `Ctrl-a`도 이름을 입력받아 새 workspace를 만들고 picker에 남아 새 항목을 선택한다. 빈 입력 또는 Esc는 취소한다.
-두 picker 모두 이름 입력 후 Enter는 생성만 하고, 선택된 새 항목에서 Enter를 한 번 더 누르면 이동한다. 새 항목을 보이도록 생성 후 검색어는 지운다.
+두 picker 모두 생성은 실제 session/workspace 포커스를 유지하고, 목록에서 Enter를 눌렀을 때 이동한다. 새 항목을 보이도록 생성 후 검색어를 지우고 부모를 펼친다. workspace·pane 생성 위치는 생성창에서 확인할 수 있다.
+생성 후 선택된 새 항목에서 `Ctrl-a`를 누르면 같은 부모 아래 형제를 추가한다. [생성 조작](picker/README.md#생성)은 picker 문서에 있다.
 `Ctrl-b c`는 이름 없는 workspace를 바로 만든다. 현재 workspace 이름 변경은 `Ctrl-b ,`를 쓴다.
 picker 소스와 검증 방법은 [picker/README.md](picker/README.md)에 있다.
 `bin/tuios-picker`는 최초 실행 또는 소스 변경 시 Go 바이너리를 `~/.cache/dotfiles-tuios/`에 빌드하고 재사용한다.
 picker popup은 화면을 그리기 전에 TUIOS를 터미널 입력 모드로 전환한다. 창 관리 모드에서 열어도 첫 검색 입력이 picker로 전달된다.
 Go는 기본 Brewfile에 포함된다. 첫 빌드에는 의존성 다운로드가 필요하며, 회사 PC에서는 pull 후 `./setup.zsh`로 링크를 연결하면 된다.
 미리 빌드하려면 `tuios-picker --build`를 실행한다. 세션 방문 이력 파일과 기존 키 설정은 그대로 사용한다.
-TUIOS 실행 파일은 수정하지 않는다. `tuios-picker`는 공식 CLI와 내장 herdr 호환 API를 사용한다.
+TUIOS 실행 파일은 수정하지 않는다. `tuios-picker`는 TUIOS JSON verb API로 목록·미리보기를 직접 읽고, 변경 작업은 공식 CLI와 내장 herdr 호환 API를 사용한다. 첫 목록은 미리보기 캡처를 기다리지 않는다.
 picker는 종료할 때 자기 popup을 직접 정리한다. 세션 이동 직후 이전 세션의 PTY 종료 알림을
 놓쳐 빈 popup이 남는 경우를 방지한다. 수동 종료는 popup에 포커스를 둔 뒤 `Ctrl-b x`를 쓴다.
 session 검색은 로컬 데몬의 세션을 표시한다. 원격 세션은 기존 session switcher에서 선택한다.

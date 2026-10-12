@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -33,16 +34,16 @@ func visible(w workspace) bool { return w.Current || w.Count > 0 || w.Name != ""
 func (s *Service) Snapshot(mode string) (Snapshot, error) {
 	var snapshot Snapshot
 	if mode == "sessions" {
-		history, err := s.history("")
-		if err != nil {
-			return snapshot, err
-		}
 		var sessions []session
-		if err = s.command(&sessions, "ls"); err != nil {
+		if err := s.command(&sessions, "ls"); err != nil {
 			return snapshot, err
 		}
 		var clients []client
-		if err = s.command(&clients, "list-clients"); err != nil {
+		if err := s.command(&clients, "list-clients"); err != nil {
+			return snapshot, err
+		}
+		history, err := s.updateHistory("", sessions, clients)
+		if err != nil {
 			return snapshot, err
 		}
 		var recent []string
@@ -79,17 +80,21 @@ func (s *Service) Snapshot(mode string) (Snapshot, error) {
 			c, d := rank(data.Items[j])
 			return a < c || a == c && b < d
 		})
-		for _, w := range data.Items {
-			item, err := sessionFor(sessions, w.ID)
-			if err != nil {
+		native := make([]session, len(data.Items))
+		for i, w := range data.Items {
+			native[i], _ = sessionFor(sessions, w.ID)
+		}
+		children, err := s.sessionWorkspaces(native)
+		if err != nil {
+			return snapshot, err
+		}
+		for i, w := range data.Items {
+			item := native[i]
+			if item.Name == "" {
 				continue
 			}
 			snapshot.Rows = append(snapshot.Rows, Row{ID: w.ID, Kind: "session", Label: first(w.Label, item.Display, item.Name), Session: item.Name, SessionID: w.ID, Panes: w.Count, Current: w.ID == current})
-			var tabs workspaceList
-			if err = s.command(&tabs, "list-workspaces", "-s", item.Name); err != nil {
-				return snapshot, err
-			}
-			for _, tab := range ordered(tabs) {
+			for _, tab := range ordered(children[i]) {
 				if tab.Count > 0 || w.ID == current && visible(tab) {
 					snapshot.Rows = append(snapshot.Rows, Row{
 						ID: fmt.Sprintf("ws:%s:%d", w.ID, tab.Number), Parent: w.ID, Kind: "workspace", Label: first(tab.Name, "이름 없음"),
@@ -124,6 +129,35 @@ func (s *Service) Snapshot(mode string) (Snapshot, error) {
 		}
 	}
 	return snapshot, nil
+}
+
+// Session workspace reads are independent. Bound concurrent requests and
+// assemble by input index so completion order never changes the tree or MRU.
+func (s *Service) sessionWorkspaces(sessions []session) ([]workspaceList, error) {
+	lists := make([]workspaceList, len(sessions))
+	errors := make([]error, len(sessions))
+	jobs := make(chan int, len(sessions))
+	for i, item := range sessions {
+		if item.Name != "" {
+			jobs <- i
+		}
+	}
+	close(jobs)
+	var workers sync.WaitGroup
+	for range min(4, len(sessions)) {
+		workers.Go(func() {
+			for i := range jobs {
+				errors[i] = s.command(&lists[i], "list-workspaces", "-s", sessions[i].Name)
+			}
+		})
+	}
+	workers.Wait()
+	for _, err := range errors {
+		if err != nil {
+			return nil, err
+		}
+	}
+	return lists, nil
 }
 
 func (s *Service) Preview(row Row) (Preview, error) {
@@ -205,9 +239,19 @@ func (s *Service) Preview(row Row) (Preview, error) {
 		result.Path = "~" + strings.TrimPrefix(result.Path, home)
 	}
 	result.Current = selected.Focused
-	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
-	defer cancel()
-	out, err := s.run(ctx, "tuios", "capture-pane", "-s", row.Session, "-w", selected.ID, "--ansi")
+	var out []byte
+	var err error
+	if s.read != nil {
+		var capture struct {
+			Content string `json:"content"`
+		}
+		err = s.read("capture-pane", map[string]any{"session": row.Session, "window": selected.ID, "ansi": true}, &capture)
+		out = []byte(capture.Content)
+	} else {
+		ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
+		defer cancel()
+		out, err = s.run(ctx, "tuios", "capture-pane", "-s", row.Session, "-w", selected.ID, "--ansi")
+	}
 	// Capture output is terminal text. Keep SGR colors but strip cursor, OSC and
 	// other controls in the UI before rendering it inside our own screen.
 	result.Screen = strings.TrimRight(string(out), "\r\n")
@@ -250,27 +294,15 @@ func (s *Service) Act(action string, row Row, name string) (ActionResult, error)
 		var created struct {
 			Item herdrWorkspace `json:"workspace"`
 		}
-		cwd := os.Getenv("TUIOS_ACTIVE_PANE_CWD")
-		if cwd == "" {
-			cwd, _ = os.Getwd()
-		}
+		cwd := creationCwd()
 		if err := s.call("workspace.create", map[string]any{"label": name, "cwd": cwd, "focus": false}, &created); err != nil {
 			return ActionResult{}, err
 		}
 		return ActionResult{Selected: created.Item.ID}, nil
 	case "create-workspace":
-		ctx, cancel := context.WithTimeout(s.ctx, 20*time.Second)
-		defer cancel()
-		out, err := s.run(ctx, s.Trial, "new-workspace", name, "--no-focus")
-		if err != nil {
-			return ActionResult{}, err
-		}
-		id := strings.TrimSpace(string(out))
-		number, err := strconv.Atoi(id)
-		if err != nil || number < 1 || number > 9 {
-			return ActionResult{}, fmt.Errorf("새 workspace 번호를 확인하지 못했습니다: %q", id)
-		}
-		return ActionResult{Selected: id}, nil
+		return s.createWorkspace(row, name)
+	case "create-pane":
+		return s.createPane(row, name)
 	case "close":
 		if row.Kind == "pane" {
 			return ActionResult{}, s.call("pane.close", map[string]any{"pane_id": strings.SplitN(row.ID, ":", 3)[2]}, nil)
@@ -448,6 +480,18 @@ func (s *Service) Cycle(step int) error {
 // The file format and socket hash are shared with the former Python picker, so
 // upgrading does not discard per-client session history.
 func (s *Service) history(target string) (map[string][]string, error) {
+	var sessions []session
+	if err := s.command(&sessions, "ls"); err != nil {
+		return nil, err
+	}
+	var clients []client
+	if err := s.command(&clients, "list-clients"); err != nil {
+		return nil, err
+	}
+	return s.updateHistory(target, sessions, clients)
+}
+
+func (s *Service) updateHistory(target string, sessions []session, clients []client) (map[string][]string, error) {
 	if err := os.MkdirAll(s.State, 0700); err != nil {
 		return nil, err
 	}
@@ -466,18 +510,10 @@ func (s *Service) history(target string) (map[string][]string, error) {
 		return nil, err
 	}
 	defer syscall.Flock(int(lock.Fd()), syscall.LOCK_UN)
-	var sessions []session
-	if err = s.command(&sessions, "ls"); err != nil {
-		return nil, err
-	}
 	byName, byID := map[string]string{}, map[string]string{}
 	for _, item := range sessions {
 		byName[item.Name] = item.ID
 		byID[item.ID] = item.Name
-	}
-	var clients []client
-	if err = s.command(&clients, "list-clients"); err != nil {
-		return nil, err
 	}
 	old := map[string][]string{}
 	bytes, readErr := os.ReadFile(base + ".json")

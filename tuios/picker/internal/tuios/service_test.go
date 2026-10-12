@@ -11,7 +11,9 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 )
 
 type harness struct {
@@ -31,10 +33,14 @@ func fixture(t *testing.T) *harness {
 	}, panes: `{"shell":"zsh","windows":[{"window_id":"popup","workspace":1,"custom_name":"picker","focused":true},{"window_id":"editor","workspace":1,"custom_name":"Editor","foreground_cmd":"nvim","cwd":"/tmp/project"},{"window_id":"log","workspace":2,"title":"Logs","foreground_cmd":"tail"}]}`,
 		clients: `[{"client_id":"c1","pid":10,"session":"source"}]`}
 	h.s.Target = "source"
+	h.s.read = nil // This fixture asserts CLI arguments; read.go has socket tests.
 	t.Cleanup(h.s.Close)
 	h.s.Popup = "popup"
 	h.s.State = t.TempDir()
+	var mu sync.Mutex
 	h.s.run = func(ctx context.Context, name string, args ...string) ([]byte, error) {
+		mu.Lock()
+		defer mu.Unlock()
 		h.events = append(h.events, strings.Join(append([]string{name}, args...), " "))
 		if name != "tuios" {
 			return []byte("{}"), nil
@@ -75,6 +81,8 @@ func fixture(t *testing.T) *harness {
 		return []byte(out), nil
 	}
 	h.s.call = func(method string, params, result any) error {
+		mu.Lock()
+		defer mu.Unlock()
 		p, _ := json.Marshal(params)
 		h.events = append(h.events, method+" "+string(p))
 		out := "{}"
@@ -121,9 +129,83 @@ func TestSnapshotOrderingPopupExclusionAndCurrent(t *testing.T) {
 	if data.Rows[0].ID != "waa" {
 		t.Fatal("current client MRU before daemon activity")
 	}
+	for _, command := range []string{"tuios ls --json", "tuios list-clients --json"} {
+		count := 0
+		for _, event := range h.events {
+			if event == command {
+				count++
+			}
+		}
+		if count != 1 {
+			t.Fatal("snapshot and history must share one lookup", command, count)
+		}
+	}
 	for _, r := range data.Rows {
 		if r.Session == "destination" && r.Current {
 			t.Fatal("inactive session workspace must not say current")
+		}
+	}
+}
+
+func TestSessionWorkspaceReadsOverlapButKeepOrderAndBoundProcesses(t *testing.T) {
+	s := New()
+	s.read = nil
+	defer s.Close()
+	started := make(chan int, 8)
+	release := make([]chan struct{}, 8)
+	sessions := make([]session, 8)
+	for i := range sessions {
+		sessions[i].Name = fmt.Sprint(i)
+		release[i] = make(chan struct{})
+	}
+	s.run = func(ctx context.Context, _ string, args ...string) ([]byte, error) {
+		var i int
+		if _, err := fmt.Sscan(args[2], &i); err != nil {
+			return nil, err
+		}
+		started <- i
+		select {
+		case <-release[i]:
+			return []byte(fmt.Sprintf(`{"workspaces":[{"workspace":%d}]}`, i+1)), nil
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+	done := make(chan struct{})
+	var lists []workspaceList
+	var err error
+	go func() { lists, err = s.sessionWorkspaces(sessions); close(done) }()
+	// Four blocked reads must start before any completes; a fifth must wait.
+	for range 2 {
+		wave := make([]int, 0, 4)
+		for range 4 {
+			select {
+			case i := <-started:
+				wave = append(wave, i)
+			case <-time.After(3 * time.Second):
+				t.Fatal("workspace reads did not overlap")
+			}
+		}
+		select {
+		case <-started:
+			t.Fatal("more than four CLI processes started")
+		default:
+		}
+		for i := len(wave) - 1; i >= 0; i-- {
+			close(release[wave[i]])
+		}
+	}
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("workspace reads did not finish")
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, list := range lists {
+		if len(list.Items) != 1 || list.Items[0].Number != i+1 {
+			t.Fatal("completion order changed session order", lists)
 		}
 	}
 }
@@ -322,19 +404,16 @@ func TestRenameChildTargetsWorkspaceSessionAndPaneIdentity(t *testing.T) {
 		t.Fatal("rename must not switch, focus or close anything", h.events)
 	}
 }
-func TestWorkspaceCreationPassesNameToLauncher(t *testing.T) {
+func TestWorkspaceCreationUsesExplicitTargetAndShellWrapper(t *testing.T) {
 	h := fixture(t)
 	h.s.Trial = "/checkout with spaces/bin/tuios-trial"
-	want := []string{"new-workspace", "review notes", "--no-focus"}
-	h.s.run = func(_ context.Context, name string, args ...string) ([]byte, error) {
-		if name != h.s.Trial || !reflect.DeepEqual(args, want) {
-			t.Fatalf("%q %q", name, args)
-		}
-		return []byte("3\n"), nil
-	}
 	exit, err := h.s.Act("create-workspace", Row{}, "review notes")
 	if err != nil || exit.Exit || exit.Selected != "3" {
 		t.Fatalf("%v %v", exit, err)
+	}
+	if !has(h.events, "tuios new-window -s source shell --workspace 3 --cwd /tmp/project --no-focus --print-id -- /checkout with spaces/bin/tuios-trial app /bin/zsh") ||
+		!has(h.events, "tuios set-workspace-name -s source -- 3 review notes") {
+		t.Fatal(h.events)
 	}
 }
 

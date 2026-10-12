@@ -30,6 +30,7 @@ type Snapshot struct {
 type ActionResult struct {
 	Exit     bool
 	Selected string
+	Warning  string // Creation succeeded partly; show the result, never retry blindly.
 }
 
 type Preview struct {
@@ -43,6 +44,7 @@ type Service struct {
 	Target, Popup, Socket, State, Trial string
 	run                                 func(context.Context, string, ...string) ([]byte, error)
 	call                                func(string, any, any) error
+	read                                func(string, any, any) error
 	spawn                               func(...string) error
 }
 
@@ -81,6 +83,7 @@ func New() *Service {
 		return out, nil
 	}
 	s.call = s.rpc
+	s.read = s.nativeRPC
 	s.spawn = s.detach
 	return s
 }
@@ -107,18 +110,30 @@ func Clean(value string) string {
 }
 
 func (s *Service) rpc(method string, params, result any) error {
-	c, err := net.DialTimeout("unix", s.Socket+".herdr", 5*time.Second)
+	return s.socketRPC(s.Socket+".herdr", "method", method, params, result)
+}
+
+func (s *Service) nativeRPC(verb string, params, result any) error {
+	return s.socketRPC(s.Socket, "verb", verb, params, result)
+}
+
+func (s *Service) socketRPC(socket, field, method string, params, result any) error {
+	c, err := net.DialTimeout("unix", socket, 5*time.Second)
 	if err != nil {
 		return err
 	}
 	defer c.Close()
 	stop := context.AfterFunc(s.ctx, func() { _ = c.Close() })
 	defer stop()
-	_ = c.SetDeadline(time.Now().Add(20 * time.Second))
+	timeout := 20 * time.Second
+	if field == "verb" && method == "capture-pane" {
+		timeout = 5 * time.Second
+	}
+	_ = c.SetDeadline(time.Now().Add(timeout))
 	if params == nil {
 		params = map[string]any{}
 	}
-	if err = json.NewEncoder(c).Encode(map[string]any{"id": "dotfiles-picker", "method": method, "params": params}); err != nil {
+	if err = json.NewEncoder(c).Encode(map[string]any{"id": "dotfiles-picker", field: method, "params": params}); err != nil {
 		return err
 	}
 	var reply struct {
@@ -140,6 +155,9 @@ func (s *Service) rpc(method string, params, result any) error {
 }
 
 func (s *Service) command(result any, args ...string) error {
+	if handled, err := s.readCommand(result, args); handled {
+		return err
+	}
 	ctx, cancel := context.WithTimeout(s.ctx, 20*time.Second)
 	defer cancel()
 	out, err := s.run(ctx, "tuios", append(args, "--json")...)

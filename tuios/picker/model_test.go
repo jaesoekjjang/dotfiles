@@ -57,19 +57,19 @@ func TestTreeNavigationAndWrapping(t *testing.T) {
 	if len(m.visible) != 4 || m.selectedID() != "1" {
 		t.Fatal("defaults should expand everything and select current")
 	}
-	m.Update(ctrl('p'))
+	m.Update(ctrl('k'))
 	if m.selectedID() != "pane:2:b" {
 		t.Fatal("row wrap")
 	}
-	m.Update(ctrl('j'))
+	m.Update(ctrl('n'))
 	if m.selectedID() != "1" {
 		t.Fatal("group wrap")
 	}
-	m.Update(ctrl('k'))
+	m.Update(ctrl('p'))
 	if m.selectedID() != "2" {
 		t.Fatal("group backward")
 	}
-	m.Update(ctrl('n'))
+	m.Update(ctrl('j'))
 	m.Update(ctrl('o'))
 	if m.selectedID() != "2" || m.expanded["2"] {
 		t.Fatal("child folds to parent")
@@ -93,8 +93,8 @@ func TestSessionGroupsAndHiddenMatch(t *testing.T) {
 		{ID: "waa", Kind: "session", Label: "anchorbase"}, {ID: "ws:waa:1", Parent: "waa", Kind: "workspace", Label: "control plane", Number: 1},
 		{ID: "wbb", Kind: "session", Label: "dotfiles"}, {ID: "ws:wbb:2", Parent: "wbb", Kind: "workspace", Label: "terminal", Number: 2},
 	}}})
-	m.Update(ctrl('n'))
 	m.Update(ctrl('j'))
+	m.Update(ctrl('n'))
 	if m.selectedID() != "wbb" {
 		t.Fatal("session jump")
 	}
@@ -107,6 +107,31 @@ func TestSessionGroupsAndHiddenMatch(t *testing.T) {
 	m.Update(ctrl('g'))
 	if len(m.visible) != 1 {
 		t.Fatal("fold state must not hide workspace search results")
+	}
+}
+
+func TestGroupAndRowKeysTraverseBothPickerHierarchies(t *testing.T) {
+	for _, mode := range []string{"sessions", "workspaces"} {
+		t.Run(mode, func(t *testing.T) {
+			root, child := "session", "workspace"
+			if mode == "workspaces" {
+				root, child = "workspace", "pane"
+			}
+			m := newModel(&fakeController{}, mode)
+			m.Update(loadedMsg{snapshot: tuios.Snapshot{Current: "a", Rows: []tuios.Row{
+				{ID: "a", Kind: root}, {ID: "a1", Parent: "a", Kind: child},
+				{ID: "b", Kind: root}, {ID: "b1", Parent: "b", Kind: child}, {ID: "b2", Parent: "b", Kind: child},
+			}}})
+			for _, step := range []struct {
+				key  rune
+				want string
+			}{{'n', "b"}, {'p', "a"}, {'j', "a1"}, {'n', "b"}, {'j', "b1"}, {'p', "b"}, {'j', "b1"}, {'j', "b2"}, {'p', "b"}, {'j', "b1"}, {'j', "b2"}, {'j', "a"}, {'k', "b2"}, {'p', "b"}, {'p', "a"}} {
+				m.Update(ctrl(step.key))
+				if m.selectedID() != step.want {
+					t.Fatalf("Ctrl-%c: got %s, want %s", step.key, m.selectedID(), step.want)
+				}
+			}
+		})
 	}
 }
 
@@ -140,11 +165,11 @@ func TestSessionWorkspacePathSearchAndContext(t *testing.T) {
 			t.Fatalf("missing context %q", label)
 		}
 	}
-	m.Update(ctrl('j'))
+	m.Update(ctrl('n'))
 	if m.selectedID() != "ws:wbb:2" {
 		t.Fatal("jump to next matching session workspace")
 	}
-	m.Update(ctrl('k'))
+	m.Update(ctrl('p'))
 	if m.selectedID() != "ws:waa:2" {
 		t.Fatal("jump back to previous matching session workspace")
 	}
@@ -220,7 +245,7 @@ func TestDeleteIsConfirmedAndScrollNeverDeletes(t *testing.T) {
 	if m.modal != "" || len(f.actions) != 0 {
 		t.Fatal("Enter defaults to cancel")
 	}
-	m.Update(ctrl('n'))
+	m.Update(ctrl('j'))
 	m.Update(ctrl('x'))
 	_, cmd := m.Update(key('y'))
 	m.Update(cmd())
@@ -374,7 +399,7 @@ func TestPreviewDebounceStaleResponsesAndToggle(t *testing.T) {
 	m := ready()
 	f := m.service.(*fakeController)
 	old := m.generation
-	m.Update(ctrl('n'))
+	m.Update(ctrl('j'))
 	if _, cmd := m.Update(previewRequest{generation: old}); cmd != nil {
 		t.Fatal("obsolete request must not capture")
 	}
