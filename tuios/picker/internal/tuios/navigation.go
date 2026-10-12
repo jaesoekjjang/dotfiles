@@ -239,6 +239,8 @@ func (s *Service) Preview(row Row) (Preview, error) {
 		result.Path = "~" + strings.TrimPrefix(result.Path, home)
 	}
 	result.Current = selected.Focused
+	result.PaneID = selected.ID
+	result.Workspace = ws.Number
 	var out []byte
 	var err error
 	if s.read != nil {
@@ -261,6 +263,9 @@ func (s *Service) Preview(row Row) (Preview, error) {
 // Act reports whether to exit or which created row to select. A self-close is detached so
 // TUIOS killing the popup cannot kill the operation halfway through.
 func (s *Service) Act(action string, row Row, name string) (ActionResult, error) {
+	if action == "send" {
+		return ActionResult{}, s.sendInput(row, name)
+	}
 	switch action {
 	case "enter":
 		if row.Kind == "pane" {
@@ -290,19 +295,6 @@ func (s *Service) Act(action string, row Row, name string) (ActionResult, error)
 		defer cancel()
 		_, err := s.run(ctx, "tuios", "set-workspace-name", strconv.Itoa(row.Number), name, "-s", row.Session)
 		return ActionResult{}, err
-	case "create-session":
-		var created struct {
-			Item herdrWorkspace `json:"workspace"`
-		}
-		cwd := creationCwd()
-		if err := s.call("workspace.create", map[string]any{"label": name, "cwd": cwd, "focus": false}, &created); err != nil {
-			return ActionResult{}, err
-		}
-		return ActionResult{Selected: created.Item.ID}, nil
-	case "create-workspace":
-		return s.createWorkspace(row, name)
-	case "create-pane":
-		return s.createPane(row, name)
 	case "close":
 		if row.Kind == "pane" {
 			return ActionResult{}, s.call("pane.close", map[string]any{"pane_id": strings.SplitN(row.ID, ":", 3)[2]}, nil)

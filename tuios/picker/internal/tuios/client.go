@@ -35,6 +35,8 @@ type ActionResult struct {
 
 type Preview struct {
 	Title, Path, Location, Screen string
+	PaneID                        string
+	Workspace                     int
 	Current                       bool
 }
 
@@ -45,6 +47,7 @@ type Service struct {
 	run                                 func(context.Context, string, ...string) ([]byte, error)
 	call                                func(string, any, any) error
 	read                                func(string, any, any) error
+	submit                              func(string, any, any) error
 	spawn                               func(...string) error
 }
 
@@ -84,6 +87,7 @@ func New() *Service {
 	}
 	s.call = s.rpc
 	s.read = s.nativeRPC
+	s.submit = s.nativeRPC
 	s.spawn = s.detach
 	return s
 }

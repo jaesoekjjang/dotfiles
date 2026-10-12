@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -9,6 +10,68 @@ import (
 	"dotfiles/tuios-picker/internal/tuios"
 	"github.com/charmbracelet/x/ansi"
 )
+
+func TestFolderEditorAppliesOnlyToThisCreation(t *testing.T) {
+	m := ready()
+	pressCreate(m)
+	m.prompt.SetValue("검증용")
+	original := m.creationFolder.Path
+	m.Update(ctrl('l'))
+	if !m.folderEditing || !m.folderInput.Focused() || m.prompt.Focused() {
+		t.Fatal("folder editor must own keyboard input")
+	}
+	m.folderInput.SetValue("discard")
+	m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if m.folderEditing || m.creationFolder.Path != original || m.prompt.Value() != "검증용" || !m.prompt.Focused() {
+		t.Fatal("cancel should restore the name form and its original folder")
+	}
+	m.Update(ctrl('l'))
+	m.folderInput.SetValue(filepath.Join(t.TempDir(), "missing"))
+	m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if !m.folderEditing || m.creationFolder.Path != original || m.status == "" {
+		t.Fatal("invalid path must remain editable without changing the folder")
+	}
+	folder := t.TempDir()
+	m.folderInput.SetValue(folder)
+	m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if m.folderEditing || m.creationFolder.Path != folder || m.prompt.Value() != "검증용" {
+		t.Fatal("apply must return without losing the name")
+	}
+	switchCreationWithKeys(m)
+	if m.creationFolder.Path != folder {
+		t.Fatal("changing kind must retain the explicit folder")
+	}
+	_, send := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	m.Update(send())
+	f := m.service.(*fakeController)
+	if len(f.folders) != 1 || f.folders[0] != folder {
+		t.Fatal("creation must receive exactly the displayed folder", f.folders)
+	}
+	pressCreate(m)
+	if m.creationFolder.Path != original {
+		t.Fatal("next creation must resolve context anew")
+	}
+}
+
+func TestFolderLookupDoesNotSubmitEarlyOrOverwriteNewForm(t *testing.T) {
+	m := ready()
+	_, first := m.Update(ctrl('a'))
+	m.prompt.SetValue("early")
+	_, send := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if send != nil || m.busy || !m.folderLoading {
+		t.Fatal("must wait for the displayed folder before creation")
+	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	_, second := m.Update(ctrl('a'))
+	m.Update(first())
+	if !m.folderLoading || m.creationFolder.Path != "" {
+		t.Fatal("stale lookup from previous form must be ignored")
+	}
+	m.Update(second())
+	if m.folderLoading || m.creationFolder.Path == "" {
+		t.Fatal("current lookup must fill the form")
+	}
+}
 
 func TestCreationTypeAndParentFromFilteredChild(t *testing.T) {
 	for _, mode := range []string{"sessions", "workspaces"} {
@@ -25,7 +88,7 @@ func TestCreationTypeAndParentFromFilteredChild(t *testing.T) {
 			m.Update(loadedMsg{snapshot: tuios.Snapshot{Rows: rows}})
 			m.search.SetValue("logs")
 			m.refilter("child", false)
-			m.Update(ctrl('a'))
+			pressCreate(m)
 			if m.modal != "create-"+childKind || m.modalRow.ID != "parent" || m.creationChild.ID != "parent" {
 				t.Fatal("default to adding alongside selected child under its actual parent", m.modal, m.modalRow, m.creationChild)
 			}
@@ -34,10 +97,10 @@ func TestCreationTypeAndParentFromFilteredChild(t *testing.T) {
 				t.Fatal("switch without losing name or parent")
 			}
 			view := ansi.Strip(m.View().Content)
-			if !strings.Contains(view, "project") || !strings.Contains(view, "Tab 종류 전환") || strings.Contains(view, "Preview") {
+			if !strings.Contains(view, "project") || !strings.Contains(view, "C-n/p 항목 이동") || strings.Contains(view, "Preview") {
 				t.Fatal(view)
 			}
-			m.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
+			switchCreationWithKeys(m)
 			if m.modal != "create-"+rootKind || m.modalRow.ID != "" {
 				t.Fatal("switch back to default")
 			}
@@ -54,8 +117,8 @@ func TestCreationSequencePinsParentExpandsAndSelectsNewChild(t *testing.T) {
 	f := m.service.(*fakeController)
 	m.expanded["1"] = false
 	m.refilter("1", false)
-	m.Update(ctrl('a'))
-	m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	pressCreate(m)
+	switchCreationWithKeys(m)
 	for i, name := range []string{"server", "logs"} {
 		id := fmt.Sprintf("pane:1:new%d", i)
 		f.createdID = id
@@ -71,7 +134,7 @@ func TestCreationSequencePinsParentExpandsAndSelectsNewChild(t *testing.T) {
 		if m.selectedID() != id || !m.expanded["1"] || m.busy {
 			t.Fatal("reveal and select new child", m.selectedID())
 		}
-		m.Update(ctrl('a'))
+		pressCreate(m)
 		if m.modal != "create-pane" || m.modalRow.ID != "1" {
 			t.Fatal("next creation must default to the selected pane's level")
 		}
@@ -80,7 +143,7 @@ func TestCreationSequencePinsParentExpandsAndSelectsNewChild(t *testing.T) {
 		t.Fatal(f.actions)
 	}
 	m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	m.Update(ctrl('a'))
+	pressCreate(m)
 	if m.modal != "create-pane" || m.modalRow.ID != "1" {
 		t.Fatal("new form must resolve selected child's parent")
 	}
@@ -88,9 +151,9 @@ func TestCreationSequencePinsParentExpandsAndSelectsNewChild(t *testing.T) {
 
 func TestCreationFailureRetainsInputAndPartialSuccessStopsSequence(t *testing.T) {
 	m := ready()
-	m.Update(ctrl('a'))
+	pressCreate(m)
 	m.prompt.SetValue("review")
-	m.Update(ctrl('a'))
+	pressCreate(m)
 	if len(m.service.(*fakeController).actions) != 0 || m.prompt.Position() != 0 {
 		t.Fatal("Ctrl-a in the form must move to line start, not create")
 	}
@@ -110,9 +173,9 @@ func TestCreationWithoutSelectionCannotSwitchToChild(t *testing.T) {
 	m := ready()
 	m.search.SetValue("no matching item")
 	m.refilter("", true)
-	m.Update(ctrl('a'))
+	pressCreate(m)
 	m.prompt.SetValue("new")
-	m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	switchCreationWithKeys(m)
 	if m.modal != "create-workspace" || m.modalRow.ID != "" || m.prompt.Value() != "new" || m.status == "" {
 		t.Fatal("root creation remains possible, child creation needs selection")
 	}
@@ -122,7 +185,7 @@ func TestCreationFormFitsNarrowScreens(t *testing.T) {
 	m := ready()
 	for _, size := range [][2]int{{120, 35}, {80, 24}, {40, 20}} {
 		m.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
-		m.Update(ctrl('a'))
+		pressCreate(m)
 		view := m.View().Content
 		if len(strings.Split(view, "\n")) > size[1] {
 			t.Fatal(size, view)
@@ -134,4 +197,8 @@ func TestCreationFormFitsNarrowScreens(t *testing.T) {
 		}
 		m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	}
+}
+
+func switchCreationWithKeys(m *model) {
+	m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 }

@@ -17,6 +17,7 @@ type fakeController struct {
 	previews  int
 	createdID string
 	snapshot  *tuios.Snapshot
+	folders   []string
 }
 
 func (f *fakeController) Snapshot(string) (tuios.Snapshot, error) {
@@ -35,6 +36,19 @@ func (f *fakeController) Act(action string, row tuios.Row, name string) (tuios.A
 		return tuios.ActionResult{Selected: f.createdID}, nil
 	}
 	return tuios.ActionResult{}, nil
+}
+func (f *fakeController) CreationFolder(row tuios.Row) (tuios.CreationFolder, error) {
+	return tuios.CreationFolder{Path: "/tmp", Source: "test pane"}, nil
+}
+func (f *fakeController) Create(action string, row tuios.Row, name, folder string) (tuios.ActionResult, error) {
+	f.folders = append(f.folders, folder)
+	return f.Act(action, row, name)
+}
+func pressCreate(m *model) {
+	_, cmd := m.Update(ctrl('a'))
+	if m.folderLoading && cmd != nil {
+		m.Update(cmd())
+	}
 }
 func sample() tuios.Snapshot {
 	return tuios.Snapshot{Current: "1", Rows: []tuios.Row{
@@ -326,22 +340,22 @@ func TestChildRenamePreservesQuerySelectionAndTree(t *testing.T) {
 func TestWorkspaceCreationPromptsForNameAndCanCancel(t *testing.T) {
 	m := ready()
 	f := m.service.(*fakeController)
-	m.Update(ctrl('a'))
+	pressCreate(m)
 	if m.modal != "create-workspace" || m.prompt.Prompt != "새 workspace › " || len(f.actions) != 0 {
 		t.Fatal("workspace creation must ask for a name before acting")
 	}
 	m.prompt.SetValue("   ")
 	m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	if m.modal != "" || !m.search.Focused() || len(f.actions) != 0 {
-		t.Fatal("empty input cancels creation and restores search")
+	if m.modal != "create-workspace" || !m.prompt.Focused() || len(f.actions) != 0 || m.status == "" {
+		t.Fatal("empty input stays editable and explains the required name")
 	}
-	m.Update(ctrl('a'))
+	pressCreate(m)
 	m.prompt.SetValue("discard")
 	m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	if m.modal != "" || len(f.actions) != 0 {
 		t.Fatal("Escape cancels creation")
 	}
-	m.Update(ctrl('a'))
+	pressCreate(m)
 	m.prompt.SetValue("  review notes  ")
 	_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	cmd()
@@ -364,7 +378,7 @@ func TestCreatedItemStaysInPickerAndIsSelected(t *testing.T) {
 			m.Update(loadedMsg{snapshot: before})
 			m.search.SetValue("old")
 			m.refilter("", true)
-			m.Update(ctrl('a'))
+			pressCreate(m)
 			m.prompt.SetValue("new")
 			_, create := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 			result := create().(actionMsg)

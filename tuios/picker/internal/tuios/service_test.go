@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -361,7 +362,8 @@ func TestSessionHistoryRoundTripAndDeletedEntries(t *testing.T) {
 }
 func TestRenameIdentityCreateCwdAndWorkspaceCycle(t *testing.T) {
 	h := fixture(t)
-	t.Setenv("TUIOS_ACTIVE_PANE_CWD", "/project with spaces")
+	folder := t.TempDir()
+	t.Setenv("TUIOS_ACTIVE_PANE_CWD", folder)
 	h.s.Act("rename", Row{ID: "waa", Kind: "session"}, "Renamed")
 	if !has(h.events, `workspace.rename {"label":"Renamed","workspace_id":"waa"}`) {
 		t.Fatal(h.events)
@@ -369,11 +371,11 @@ func TestRenameIdentityCreateCwdAndWorkspaceCycle(t *testing.T) {
 	if _, err := h.s.Act("rename", Row{ID: "2", Kind: "workspace", Number: 2, Session: "source"}, "New name"); err != nil {
 		t.Fatal(err)
 	}
-	result, err := h.s.Act("create-session", Row{}, "New")
+	result, err := h.s.Create("create-session", Row{}, "New", folder)
 	if err != nil || result.Exit || result.Selected != "wcc" {
 		t.Fatal(result, err)
 	}
-	if !has(h.events, `"cwd":"/project with spaces"`) || !has(h.events, `"focus":false`) || has(h.events, `workspace.focus {"workspace_id":"wcc"}`) {
+	if !has(h.events, `"cwd":`+strconv.Quote(folder)) || !has(h.events, `"focus":false`) || has(h.events, `workspace.focus {"workspace_id":"wcc"}`) {
 		t.Fatal(h.events)
 	}
 	if err := h.s.Cycle(1); err != nil {
@@ -405,13 +407,14 @@ func TestRenameChildTargetsWorkspaceSessionAndPaneIdentity(t *testing.T) {
 	}
 }
 func TestWorkspaceCreationUsesExplicitTargetAndShellWrapper(t *testing.T) {
+	folder := t.TempDir()
 	h := fixture(t)
 	h.s.Trial = "/checkout with spaces/bin/tuios-trial"
-	exit, err := h.s.Act("create-workspace", Row{}, "review notes")
+	exit, err := h.s.Create("create-workspace", Row{}, "review notes", folder)
 	if err != nil || exit.Exit || exit.Selected != "3" {
 		t.Fatalf("%v %v", exit, err)
 	}
-	if !has(h.events, "tuios new-window -s source shell --workspace 3 --cwd /tmp/project --no-focus --print-id -- /checkout with spaces/bin/tuios-trial app /bin/zsh") ||
+	if !has(h.events, "tuios new-window -s source shell --workspace 3 --cwd "+folder+" --no-focus --print-id -- /checkout with spaces/bin/tuios-trial app /bin/zsh") ||
 		!has(h.events, "tuios set-workspace-name -s source -- 3 review notes") {
 		t.Fatal(h.events)
 	}

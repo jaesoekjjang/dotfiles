@@ -6,6 +6,7 @@ import (
 	"strings"
 	"unicode"
 
+	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"dotfiles/tuios-picker/internal/tuios"
@@ -80,6 +81,18 @@ func panel(title, body string, width, height int) string {
 }
 
 func (m *model) helpLines() []string {
+	if m.folderEditing {
+		if m.projectOpen {
+			return []string{"C-n/p 이동 · Enter 선택 · Esc 목록 닫기"}
+		}
+		if len(m.folderChoices) > 0 {
+			return []string{"C-n/p 후보 이동 · Tab 완성 · C-o 프로젝트 찾기", "Enter 적용 (후보 선택 시 완성) · Esc 목록 닫기"}
+		}
+		return []string{"입력 시 폴더 후보 표시 · C-o 프로젝트 찾기", "Enter 적용 · Esc 돌아가기"}
+	}
+	if m.modal == "send" {
+		return []string{"Enter 전송 (대상에 Enter 포함) · Esc 취소"}
+	}
 	if m.modal == "close" {
 		return []string{"y 종료 · Enter / n / Esc 취소"}
 	}
@@ -90,9 +103,16 @@ func (m *model) helpLines() []string {
 	if m.mode == "workspaces" {
 		group = "WS"
 	}
-	items := []string{"Enter 이동", "C-n/p " + group, "C-j/k 행", "Tab/C-o 펼침", "C-g 전체", "C-u/d 스크롤", "C-a 추가", "C-r 이름", "C-x 종료", "C-/ 미리보기", "Esc 닫기"}
+	items := []string{"Enter 이동", "C-n/p " + group, "C-j/k 행", "Tab/C-o 펼침", "C-g 전체", "C-u/d 스크롤", "C-s 입력", "C-a 추가", "C-r 이름", "C-x 종료", "C-/ 미리보기", "Esc 닫기"}
 	if m.creating() {
-		items = []string{"Tab 종류 전환", "Enter 생성", "Esc 취소"}
+		action := "Enter 생성"
+		if m.creationFocus == 1 {
+			action = "Enter 폴더 변경"
+		}
+		if m.creationFocus == 2 {
+			action = "Space 종류 전환"
+		}
+		items = []string{"Tab 종류 전환", "C-n/p 항목 이동", "C-l 폴더 변경", action, "Esc 취소"}
 	}
 	var lines []string
 	line := ""
@@ -118,6 +138,7 @@ type dimensions struct {
 
 func (m *model) dimensions() dimensions {
 	w, h := max(20, m.width-2), max(10, m.height-len(m.helpLines())-2)
+
 	if !m.showPreview || m.creating() {
 		return dimensions{leftW: w, leftH: h}
 	}
@@ -136,6 +157,8 @@ func (m *model) resize() {
 	d := m.dimensions()
 	m.search.SetWidth(max(5, d.leftW-15))
 	m.prompt.SetWidth(max(5, d.leftW-18))
+	m.folderInput.SetWidth(max(5, d.leftW-14))
+	m.projectInput.SetWidth(max(5, d.leftW-18))
 	m.viewport.SetWidth(max(1, d.rightW-4))
 	m.viewport.SetHeight(max(1, d.rightH-7))
 }
@@ -247,6 +270,34 @@ func (m *model) listView(width, height int) string {
 			}
 		}
 		lines = []string{"", bright.Render(row.Kind + " '" + tuios.Clean(label) + "' 종료?"), "", muted.Render(fmt.Sprintf("%d panes", row.Panes)), "", amber.Render("y 종료"), muted.Render("Enter / n / Esc 취소")}
+	} else if m.folderEditing {
+		input := m.folderInput.View()
+		if m.projectOpen {
+			input = m.projectInput.View()
+		}
+		lines = []string{"", input, ""}
+		if m.projectLoading && m.projectOpen {
+			lines = append(lines, muted.Render("프로젝트 불러오는 중…"))
+		} else if len(m.folderChoices) > 0 {
+			capacity := max(1, height-7)
+			start := max(0, m.folderChoiceIndex-capacity+1)
+			for i := start; i < min(len(m.folderChoices), start+capacity); i++ {
+				label := "  " + tuios.Clean(m.folderChoices[i].label)
+				style := normal
+				if i == m.folderChoiceIndex {
+					label = "› " + tuios.Clean(m.folderChoices[i].label)
+					style = pointer
+				}
+				lines = append(lines, style.Render(fit(label, width-4)))
+			}
+			if m.projectOpen {
+				lines = append(lines, muted.Render(fit(tuios.Clean(m.folderChoices[m.folderChoiceIndex].path), width-4)))
+			}
+		} else if m.projectOpen {
+			lines = append(lines, muted.Render("일치하는 프로젝트 없음"))
+		} else {
+			lines = append(lines, muted.Render("이번 생성에 사용할 폴더"), muted.Render("~/ 지원 · 상대 경로는 처음 제안된 폴더 기준"))
+		}
 	} else if m.creating() {
 		root, child := "Session", "Workspace"
 		if m.mode == "workspaces" {
@@ -258,14 +309,41 @@ func (m *model) listView(width, height int) string {
 		} else {
 			child, childStyle = "[ "+child+" ]", pointer.Bold(true)
 		}
-		lines = []string{rootStyle.Render(root) + "   " + childStyle.Render(child)}
+		marker := "종류  "
+		if m.creationFocus == 2 {
+			marker = "› 종류  "
+		}
+		lines = []string{bright.Render(marker) + rootStyle.Render(root) + "   " + childStyle.Render(child)}
 		if destination := m.creationDestination(); destination != "" {
-			lines = append(lines, muted.Render("위치  ")+bright.Render(tuios.Clean(destination)))
+			lines = append(lines, muted.Render("소속  ")+bright.Render(tuios.Clean(destination)))
 		}
 		lines = append(lines, "", m.prompt.View())
+		path := m.creationFolder.Path
+		if m.folderLoading {
+			path = "확인 중…"
+		} else if path == "" {
+			path = "폴더를 지정하세요"
+		}
+		folderLabel := "시작 폴더"
+		if m.creationFocus == 1 {
+			folderLabel = "› " + folderLabel
+		}
+		lines = append(lines, "", bright.Render(folderLabel))
+		// Keep spaces in paths: Clean collapses them and would display a
+		// different folder from the one actually passed to creation.
+		path = strings.Map(func(r rune) rune {
+			if unicode.IsPrint(r) {
+				return r
+			}
+			return '�'
+		}, path)
+		lines = append(lines, strings.Split(ansi.Hardwrap(path, max(1, width-4), true), "\n")...)
+		lines = append(lines, muted.Render(fit(tuios.Clean(m.creationFolder.Source), width-4)))
 		if m.creationChild.ID == "" {
 			lines = append(lines, muted.Render("하위 생성: 먼저 "+m.creationParentKind()+" 선택"))
 		}
+	} else if m.modal == "send" {
+		lines = []string{muted.Render("대상 workspace"), bright.Render(fit(tuios.Clean(m.inputTarget), width-4)), muted.Render("대상 pane"), bright.Render(fit(tuios.Clean(m.modalRow.Label), width-4)), "", m.prompt.View(), "", muted.Render("텍스트와 Enter를 보냅니다")}
 	} else if m.modal != "" {
 		lines = []string{"", m.prompt.View(), "", muted.Render("Enter 저장 · Esc 취소")}
 	} else if m.loading && len(m.rows) == 0 {
@@ -283,8 +361,12 @@ func (m *model) listView(width, height int) string {
 	if m.mode == "workspaces" {
 		title = "Workspaces"
 	}
-	if m.creating() {
+	if m.folderEditing {
+		title = "시작 폴더 변경"
+	} else if m.creating() {
 		title = "추가"
+	} else if m.modal == "send" {
+		title = "입력 보내기"
 	}
 	return panel(title, strings.Join(lines, "\n"), width, height)
 }
@@ -312,6 +394,10 @@ func (m *model) View() tea.View {
 		total = len(m.rows)
 	}
 	count := muted.Render(fmt.Sprintf("%d/%d", len(m.visible), total))
+	if m.creating() {
+		input = bright.Render("새 항목 만들기")
+		count = ""
+	}
 	left := pair(input, count, d.leftW) + "\n" + border.Render(strings.Repeat("─", d.leftW)) + "\n\n" + m.listView(d.leftW, d.leftH-3)
 	body := left
 	if m.showPreview && d.rightW > 0 {
@@ -336,5 +422,54 @@ func (m *model) View() tea.View {
 	content := lipgloss.NewStyle().Padding(0, 1).Render(body + "\n" + footer)
 	v := tea.NewView(content)
 	v.AltScreen = true
+	v.Cursor = m.inputCursor()
 	return v
+}
+
+// Give the host a visible caret at the input, so IME composition can be
+// displayed before the composed character is committed to the picker.
+func (m *model) inputCursor() *tea.Cursor {
+	input, x, y := m.search, 1, 0
+	if m.modal != "" {
+		if m.modal == "close" {
+			return nil
+		}
+		input, x, y = m.prompt, 3, 5
+		if m.folderEditing {
+			input = m.folderInput
+			if m.projectOpen {
+				input = m.projectInput
+			}
+		} else if m.modal == "send" {
+			y = 9
+		} else if m.creating() {
+			if m.creationFocus != 0 {
+				return nil
+			}
+			y = 6
+			if m.creationDestination() != "" {
+				y++
+			}
+		}
+	}
+	c := input.Cursor()
+	if c == nil {
+		return nil
+	}
+	// Bubbles 2.2.1 Cursor uses a rune index and does not account for the
+	// input's horizontal scroll. Locate its caret in an unstyled, static
+	// rendering instead, keeping CJK width and the component's viewport.
+	probe := input
+	probe.SetVirtualCursor(true)
+	probe.SetStyles(textinput.Styles{})
+	marked := probe.View()
+	if i := strings.Index(marked, "\x1b[7m"); i >= 0 {
+		c.Position.X = ansi.StringWidth(marked[:i])
+	}
+	c.Position.X += x
+	c.Position.Y += y
+	if c.Position.X >= m.width || c.Position.Y >= m.height {
+		return nil
+	}
+	return c
 }

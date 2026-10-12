@@ -4,7 +4,8 @@ import "encoding/json"
 
 // These reads use the same JSON verbs as the installed TUIOS CLI. Avoid
 // starting the CLI for every session or preview; no disk snapshot is reused.
-// Other commands, including all mutations, continue through their CLI path.
+// Other commands continue through their CLI path; the input composer uses
+// native send-text with submit, which the CLI does not expose.
 func (s *Service) readCommand(result any, args []string) (bool, error) {
 	if s.read == nil || len(args) == 0 {
 		return false, nil

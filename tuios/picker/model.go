@@ -16,6 +16,8 @@ type controller interface {
 	Snapshot(string) (tuios.Snapshot, error)
 	Preview(tuios.Row) (tuios.Preview, error)
 	Act(string, tuios.Row, string) (tuios.ActionResult, error)
+	CreationFolder(tuios.Row) (tuios.CreationFolder, error)
+	Create(string, tuios.Row, string, string) (tuios.ActionResult, error)
 }
 type loadedMsg struct {
 	snapshot   tuios.Snapshot
@@ -51,14 +53,26 @@ type model struct {
 	previewLoading                         bool
 	modal                                  string
 	modalRow                               tuios.Row
+	inputTarget                            string
 	creationChild                          tuios.Row
 	creationLocation                       string
+	creationFolder                         tuios.CreationFolder
+	creationBase                           string
+	folderInput                            textinput.Model
+	folderEditing, folderLoading           bool
+	folderGeneration                       int
+	creationFocus                          int // 0 name, 1 folder, 2 kind
+	folderChoices, projects                []folderChoice
+	folderChoiceIndex                      int
+	projectInput                           textinput.Model
+	projectOpen, projectLoading            bool
+	projectGeneration                      int
 	status, anchor                         string
 }
 
 func newInput() textinput.Model {
 	i := textinput.New()
-	i.SetVirtualCursor(true)
+	i.SetVirtualCursor(false)
 	i.Prompt = "찾기 › "
 	i.Placeholder = "이름 검색"
 	styles := textinput.DefaultDarkStyles()
@@ -72,7 +86,7 @@ func newInput() textinput.Model {
 }
 
 func newModel(service controller, mode string) *model {
-	m := &model{service: service, mode: mode, expanded: map[string]bool{}, search: newInput(), prompt: newInput(), viewport: viewport.New(), showPreview: true, loading: true, width: 80, height: 24}
+	m := &model{service: service, mode: mode, expanded: map[string]bool{}, search: newInput(), prompt: newInput(), folderInput: newInput(), projectInput: newInput(), viewport: viewport.New(), showPreview: true, loading: true, width: 80, height: 24}
 	if mode == "workspaces" {
 		m.search.Placeholder = "이름 / 번호 검색"
 	} else {
@@ -239,6 +253,9 @@ func (m *model) openModal(kind string, row tuios.Row) tea.Cmd {
 		m.prompt.Prompt = "새 pane › "
 	case "close":
 		m.prompt.Prompt = ""
+	case "send":
+		m.prompt.Prompt = "보낼 내용 › "
+		m.prompt.Placeholder = "한 줄 입력 후 Enter로 전송"
 	}
 	return m.prompt.Focus()
 }
@@ -246,6 +263,30 @@ func (m *model) openModal(kind string, row tuios.Row) tea.Cmd {
 func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	defer func() { m.resize(); m.keepVisible() }()
 	switch msg := message.(type) {
+	case projectsMsg:
+		if !m.projectOpen || msg.generation != m.projectGeneration {
+			return m, nil
+		}
+		m.projectLoading = false
+		if msg.err != nil {
+			m.status = "프로젝트 목록: " + msg.err.Error()
+			return m, nil
+		}
+		m.projects = msg.choices
+		m.filterProjects()
+		return m, nil
+	case creationFolderMsg:
+		if !m.creating() || msg.generation != m.folderGeneration {
+			return m, nil
+		}
+		m.folderLoading = false
+		if msg.err != nil {
+			m.status = msg.err.Error() + " · Ctrl+L로 시작 폴더를 지정하세요"
+			return m, nil
+		}
+		m.creationFolder = msg.folder
+		m.creationBase = msg.folder.Path
+		return m, nil
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -307,6 +348,14 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = msg.err.Error()
 			return m, nil
 		}
+		if m.modal == "send" {
+			m.modal = ""
+			m.prompt.Reset()
+			m.prompt.Blur()
+			m.search.Focus()
+			m.status = "입력 전송됨 · " + m.inputTarget + " › " + m.modalRow.Label
+			return m, m.requestPreview()
+		}
 		if msg.result.Exit {
 			return m, tea.Quit
 		}
@@ -337,6 +386,9 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		if m.busy {
 			return m, nil
 		}
+		if m.folderEditing {
+			return m, m.updateFolder(msg)
+		}
 		if m.modal != "" {
 			if key == "esc" || m.modal == "close" && (key == "n" || key == "enter") {
 				m.modal = ""
@@ -359,18 +411,51 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			if m.creating() {
+				if key == "ctrl+l" {
+					return m, m.openFolder()
+				}
 				if key == "tab" || key == "shift+tab" {
 					m.switchCreation()
 					return m, nil
 				}
+				if key == "ctrl+n" || key == "ctrl+p" {
+					step := 1
+					if key == "ctrl+p" {
+						step = -1
+					}
+					m.creationFocus = (m.creationFocus + step + 3) % 3
+					m.prompt.Blur()
+					if m.creationFocus == 0 {
+						return m, m.prompt.Focus()
+					}
+					return m, nil
+				}
+				if m.creationFocus == 2 {
+					if key == "space" || key == " " || key == "enter" {
+						m.switchCreation()
+					}
+					return m, nil
+				}
+				if m.creationFocus == 1 {
+					if key == "enter" {
+						return m, m.openFolder()
+					}
+					return m, nil
+				}
 				if key == "enter" {
 					if strings.TrimSpace(m.prompt.Value()) == "" {
-						m.modal = ""
-						m.prompt.Blur()
-						return m, m.search.Focus()
+						m.status = "이름을 입력하세요"
+						return m, nil
 					}
-					return m, m.perform(m.modal, m.modalRow, strings.TrimSpace(m.prompt.Value()))
+					return m, m.create()
 				}
+			}
+			if m.modal == "send" && key == "enter" {
+				if strings.TrimSpace(m.prompt.Value()) == "" {
+					m.status = "보낼 내용을 입력하세요"
+					return m, nil
+				}
+				return m, m.perform("send", m.modalRow, m.prompt.Value())
 			}
 			if key == "enter" {
 				action, row, name := m.modal, m.modalRow, strings.TrimSpace(m.prompt.Value())
@@ -427,6 +512,20 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			if row, ok := m.selected(); ok {
 				return m, m.openModal("rename", row)
 			}
+		case "ctrl+s":
+			if row, ok := m.selected(); ok {
+				if !m.showPreview || m.previewLoading || m.preview.PaneID == "" {
+					m.status = "미리보기에서 입력할 pane을 확인한 뒤 다시 시도하세요"
+					return m, nil
+				}
+				m.inputTarget = m.preview.Location
+				row.Label = m.preview.Title
+				row.Kind = "pane"
+				row.ID = "pane:" + row.SessionID + ":" + m.preview.PaneID
+				row.Number = m.preview.Workspace
+				m.status = ""
+				return m, m.openModal("send", row)
+			}
 		case "ctrl+a":
 			if m.loading && len(m.rows) == 0 {
 				m.status = "목록을 불러오는 중입니다"
@@ -457,7 +556,21 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	value, before := m.search.Value(), m.selectedID()
 	var cmd tea.Cmd
-	if m.modal != "" {
+	if m.folderEditing {
+		if m.projectOpen {
+			before := m.projectInput.Value()
+			m.projectInput, cmd = m.projectInput.Update(message)
+			if before != m.projectInput.Value() {
+				m.filterProjects()
+			}
+		} else {
+			before := m.folderInput.Value()
+			m.folderInput, cmd = m.folderInput.Update(message)
+			if before != m.folderInput.Value() {
+				m.refreshFolderChoices()
+			}
+		}
+	} else if m.modal != "" {
 		m.prompt, cmd = m.prompt.Update(message)
 	} else {
 		m.search, cmd = m.search.Update(message)
