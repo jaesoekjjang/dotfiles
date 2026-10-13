@@ -33,7 +33,7 @@ TUIOS의 대화형 zsh에서도 이 값을 제거한다. 기존 Codex 프로세�
 | `Ctrl-b &` | 현재 workspace 종료 확인창 → 모든 pane·이름 제거 후 이웃 workspace로 이동 |
 | `Ctrl-b s` | Go picker로 session 검색·선택 (Ctrl-a: 선택 레벨 추가) |
 | `Ctrl-b w` | Go picker로 workspace 검색·선택 (Ctrl-a: 선택 레벨 추가) |
-| `Ctrl-b n` / `Ctrl-b v` | 다음 / 이전 workspace (빈 무명 workspace는 건너뛰고 순환) |
+| `Ctrl-b n` / `Ctrl-b v` | 다음 / 이전 workspace (이름이 있어도 빈 workspace는 건너뛰고 순환) |
 | `Ctrl-b Tab` / `Ctrl-b Shift-Tab` | 다음 / 이전 pane |
 | `Ctrl-b c` | 빈 workspace에 현재 pane 경로의 shell을 열고 이동 |
 | `Ctrl-b !` | 현재 pane을 새 workspace로 분리하고 함께 이동 |

@@ -506,7 +506,9 @@ func (s *Service) Cycle(step int) error {
 	if err := s.command(&data, "list-workspaces", "-s", s.Target); err != nil {
 		return err
 	}
-	items := slices.DeleteFunc(ordered(data), func(w workspace) bool { return !visible(w) })
+	// Names persist after the last pane closes. Keep the current workspace as
+	// an anchor, but only cycle to workspaces that still contain panes.
+	items := slices.DeleteFunc(ordered(data), func(w workspace) bool { return !w.Current && w.Count == 0 })
 	i := slices.IndexFunc(items, func(w workspace) bool { return w.Current })
 	if i < 0 {
 		return fmt.Errorf("현재 workspace를 찾을 수 없습니다")
