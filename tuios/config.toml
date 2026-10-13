@@ -770,7 +770,7 @@ left = ['mode', 'custom/current_session', 'workspaces', 'trail', 'tape']
 [dock.clock]
 [dock.custom]
 [dock.custom.current_session]
-command = 'printf "SESSION: %s\n" "$TUIOS_SESSION"'
+command = '''tuios session-info -s "$TUIOS_SESSION" --json | jq -er 'select(.success == true) | ((.display_name | select(type == "string" and length > 0)) // .session_name)''''
 refresh = '2s'
 max-width = 48
 

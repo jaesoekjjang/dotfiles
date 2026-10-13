@@ -37,7 +37,7 @@ vim.api.nvim_set_current_win(explorer.winid)
 local selected=vim.deepcopy(explorer.data.current_selection)
 local toggle=vim.fn.maparg('<C-p>','n',false,true).callback
 assert(type(toggle)=='function', 'preview key in explorer')
-toggle()
+assert(s.dotfiles_auto_preview == true, 'cursor preview enabled by default')
 local function find_file(name)
   for row,line in ipairs(vim.api.nvim_buf_get_lines(explorer.bufnr,0,-1,false)) do
     if line:find(name,1,true) then
@@ -53,6 +53,9 @@ assert(vim.wait(3000,function() return explorer.data.current_selection.path=='b.
 toggle()
 find_file('a.txt')
 assert(explorer.data.current_selection.path=='b.txt', 'disabled preview leaves selection')
+vim.api.nvim_exec_autocmds('BufEnter',{})
+vim.wait(100)
+assert(s.dotfiles_auto_preview == false, 'entering a buffer preserves disabled preview')
 explorer.on_file_select(selected,{force=true})
 vim.wait(200)
 local function restored()

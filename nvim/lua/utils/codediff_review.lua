@@ -312,6 +312,9 @@ function M.setup_keymaps()
 			if not session then
 				return
 			end
+			if session.dotfiles_auto_preview == nil then
+				session.dotfiles_auto_preview = true
+			end
 			local opts = { desc = "Restore CodeDiff panels" }
 			lifecycle.set_tab_keymap(tab, "n", "gR", M.restore, opts)
 			lifecycle.set_tab_keymap(tab, "n", "gP", M.toggle_panel_position,
