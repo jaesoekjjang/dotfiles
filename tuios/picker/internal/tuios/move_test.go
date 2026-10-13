@@ -100,3 +100,23 @@ func TestMoveRejectsLostSourceDestinationAndPopup(t *testing.T) {
 		t.Fatal("popup cannot be source")
 	}
 }
+
+func TestMoveStayOmitsFollowForExistingAndNewWorkspace(t *testing.T) {
+	for _, dest := range []Row{
+		{Kind: "workspace", Number: 2, Session: "source"},
+		{Kind: "new-workspace", ID: "move:new", Session: "source"},
+	} {
+		h := fixture(t)
+		t.Setenv("TUIOS_ACTIVE_PANE_ID", "editor")
+		if err := h.s.PinMoveSource(); err != nil {
+			t.Fatal(err)
+		}
+		result, err := h.s.Act("move-stay", dest, "")
+		if err != nil || !result.Exit {
+			t.Fatal(result, err)
+		}
+		if !has(h.events, "move-window") || has(h.events, "--follow") {
+			t.Fatal(h.events)
+		}
+	}
+}

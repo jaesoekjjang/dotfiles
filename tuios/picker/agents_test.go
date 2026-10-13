@@ -51,3 +51,51 @@ func TestMovePickerOnlyMovesAndKeepsNewDefault(t *testing.T) {
 		t.Fatal(f.actions)
 	}
 }
+
+func TestMoveEnterAndControlEnterAreDistinct(t *testing.T) {
+	for _, tc := range []struct {
+		mod    tea.KeyMod
+		action string
+	}{
+		{0, "move"}, {tea.ModCtrl, "move-stay"},
+	} {
+		f := &fakeController{}
+		m := newModel(f, "move-pane")
+		m.Update(loadedMsg{snapshot: tuios.Snapshot{Rows: []tuios.Row{{ID: "move:new", Kind: "new-workspace", Label: "+ 새 workspace"}}, Current: "move:new"}})
+		_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tc.mod})
+		if cmd == nil {
+			t.Fatal("key did not dispatch move")
+		}
+		m.Update(cmd())
+		if len(f.actions) != 1 || f.actions[0] != tc.action+":move:new:" {
+			t.Fatal(f.actions)
+		}
+	}
+}
+
+func TestSessionStartsExpandedAndSuppressesOnlyVisibleDuplicates(t *testing.T) {
+	m := newModel(&fakeController{}, "sessions")
+	parent := tuios.Row{ID: "s", Kind: "session", Label: "project", Current: true, Agents: tuios.AgentCounts{Working: 1}}
+	child := tuios.Row{ID: "w", Parent: "s", Kind: "workspace", Label: "이름 없음", Number: 1, Current: true, Agents: parent.Agents}
+	m.Update(loadedMsg{snapshot: tuios.Snapshot{Rows: []tuios.Row{parent, child}, Current: "s"}})
+	if len(m.visible) != 2 || !m.expanded["s"] {
+		t.Fatal("sessions must initially be expanded")
+	}
+	m.Update(ctrl('o'))
+	if !strings.Contains(ansi.Strip(m.rowView(parent, 80, false)), "current") {
+		t.Fatal("collapsed summary missing")
+	}
+	m.Update(ctrl('o'))
+	parentLine := ansi.Strip(m.rowView(parent, 80, false))
+	childLine := ansi.Strip(m.rowView(child, 80, false))
+	if strings.Contains(parentLine, "작업 중") || strings.Contains(parentLine, "current") {
+		t.Fatal(parentLine)
+	}
+	if !strings.Contains(childLine, "1  —") || !strings.Contains(childLine, "current") || strings.Contains(childLine, "workspace") {
+		t.Fatal(childLine)
+	}
+	m.search.SetValue("project")
+	if !strings.Contains(ansi.Strip(m.rowView(parent, 80, false)), "작업 중") {
+		t.Fatal("search must preserve aggregate")
+	}
+}

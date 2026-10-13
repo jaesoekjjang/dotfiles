@@ -39,6 +39,8 @@ type actionMsg struct {
 }
 
 type model struct {
+	layoutRefreshing                       bool
+	searchAnchor                           string
 	agentRefreshing                        bool
 	service                                controller
 	mode                                   string
@@ -199,6 +201,11 @@ func (m *model) toggle(all bool) {
 				break
 			}
 		}
+		if !open {
+			if r, ok := m.selected(); ok && r.Parent != "" {
+				anchor = r.Parent
+			}
+		}
 		for _, r := range m.rows {
 			if r.Parent == "" {
 				m.expanded[r.ID] = open
@@ -293,6 +300,27 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		m.refilter(m.selectedID(), false)
+		if (len(m.preview.Panes) > 1 || m.preview.Overview) && m.showPreview && !m.previewLoading && !m.layoutRefreshing {
+			if row, ok := m.selected(); ok {
+				m.layoutRefreshing = true
+				generation := m.generation
+				return m, func() tea.Msg { p, err := m.service.Preview(row); return layoutRefresh{generation, p, err} }
+			}
+		}
+		return m, nil
+	case layoutRefresh:
+		m.layoutRefreshing = false
+		if msg.generation == m.generation && m.showPreview && m.modal == "" && !m.busy && msg.err == nil {
+			selectedPane := m.preview.PaneID
+			m.preview = msg.preview
+			m.selectPreviewPane(selectedPane)
+			if len(msg.preview.Panes) < 2 {
+				m.viewport.SetContent(screenText(msg.preview.Screen))
+				if !msg.preview.Overview {
+					m.viewport.GotoBottom()
+				}
+			}
+		}
 		return m, nil
 	case projectsMsg:
 		if !m.projectOpen || msg.generation != m.projectGeneration {
@@ -312,7 +340,7 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.folderLoading = false
 		if msg.err != nil {
-			m.status = msg.err.Error() + " · Ctrl+L로 시작 폴더를 지정하세요"
+			m.status = msg.err.Error() + " · Ctrl+O로 시작 폴더를 지정하세요"
 			return m, nil
 		}
 		m.creationFolder = msg.folder
@@ -371,11 +399,16 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			m.preview.Screen = "미리보기를 불러오지 못했습니다.\n" + tuios.Clean(msg.err.Error())
 		}
 		m.viewport.SetContent(screenText(m.preview.Screen))
-		m.viewport.GotoBottom()
+		if m.preview.Overview {
+			m.viewport.GotoTop()
+		} else {
+			m.viewport.GotoBottom()
+		}
 		return m, nil
 	case actionMsg:
 		m.busy = false
 		if msg.err != nil {
+			m.anchor = ""
 			m.status = msg.err.Error()
 			return m, nil
 		}
@@ -436,22 +469,22 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 					m.modal = ""
 					m.prompt.Blur()
 					m.search.Focus()
-					m.anchor = row.Parent
+					m.anchor = m.afterClose(row)
 					return m, m.perform("close", row, "")
 				}
 				return m, nil
 			}
 			if m.creating() {
-				if key == "ctrl+l" {
+				if key == "ctrl+o" {
 					return m, m.openFolder()
 				}
 				if key == "tab" || key == "shift+tab" {
 					m.switchCreation()
 					return m, nil
 				}
-				if key == "ctrl+n" || key == "ctrl+p" {
+				if key == "ctrl+n" || key == "ctrl+p" || key == "ctrl+h" || key == "ctrl+l" || key == "ctrl+j" || key == "ctrl+k" {
 					step := 1
-					if key == "ctrl+p" {
+					if key == "ctrl+p" || key == "ctrl+h" || key == "ctrl+k" {
 						step = -1
 					}
 					m.creationFocus = (m.creationFocus + step + 3) % 3
@@ -509,16 +542,23 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		before := m.selectedID()
 		switch key {
 		case "esc":
-			return m, tea.Quit
-		case "ctrl+n":
+			return m, m.escapeSearch()
+		case "ctrl+n", "ctrl+l":
 			m.move(1, true)
-		case "ctrl+p":
+		case "ctrl+p", "ctrl+h":
 			m.move(-1, true)
 		case "ctrl+j", "down":
 			m.move(1, false)
 		case "ctrl+k", "up":
 			m.move(-1, false)
-		case "tab", "ctrl+o":
+		case "tab", "shift+tab":
+			direction := 1
+			if key == "shift+tab" {
+				direction = -1
+			}
+			m.cyclePreviewPane(direction)
+			return m, nil
+		case "ctrl+o":
 			m.toggle(false)
 		case "ctrl+g":
 			m.toggle(true)
@@ -549,14 +589,11 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+s":
 			if row, ok := m.selected(); ok {
 				if !m.showPreview || m.previewLoading || m.preview.PaneID == "" {
-					m.status = "미리보기에서 입력할 pane을 확인한 뒤 다시 시도하세요"
+					m.status = "입력할 workspace 또는 pane을 선택하세요"
 					return m, nil
 				}
 				m.inputTarget = m.preview.Location
-				row.Label = m.preview.Title
-				row.Kind = "pane"
-				row.ID = "pane:" + row.SessionID + ":" + m.preview.PaneID
-				row.Number = m.preview.Workspace
+				row = m.previewPaneRow(row)
 				m.status = ""
 				return m, m.openModal("send", row)
 			}
@@ -568,6 +605,9 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.openCreation()
 		case "enter":
 			if row, ok := m.selected(); ok {
+				if row.Kind == "workspace" && m.showPreview && !m.previewLoading && m.preview.PaneID != "" {
+					row = m.previewPaneRow(row)
+				}
 				return m, m.perform("enter", row, "")
 			}
 		default:
@@ -575,7 +615,7 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			var cmd tea.Cmd
 			m.search, cmd = m.search.Update(msg)
 			if m.search.Value() != value {
-				m.refilter("", true)
+				m.searchChanged(value, before)
 				return m, tea.Batch(cmd, m.requestPreview())
 			}
 			return m, cmd
@@ -611,7 +651,7 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	// Paste is a separate message in Bubble Tea. It must re-filter too.
 	if m.search.Value() != value {
-		m.refilter("", true)
+		m.searchChanged(value, before)
 		return m, tea.Batch(cmd, m.requestPreview())
 	}
 	m.refilter(before, false)

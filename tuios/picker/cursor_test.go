@@ -49,7 +49,7 @@ func TestModalCursorFollowsInputPlacement(t *testing.T) {
 func TestFolderEditorUsesNativeCursor(t *testing.T) {
 	m := ready()
 	pressCreate(m)
-	m.Update(ctrl('l'))
+	m.Update(ctrl('o'))
 	m.folderInput.SetValue("한글Z")
 	m.folderInput.SetCursor(2)
 	assertCaretAt(t, m, "Z")

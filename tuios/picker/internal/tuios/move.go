@@ -47,7 +47,7 @@ func (s *Service) moveSnapshot() (Snapshot, error) {
 	}
 	return result, nil
 }
-func (s *Service) movePane(destination Row) (ActionResult, error) {
+func (s *Service) movePane(destination Row, follow bool) (ActionResult, error) {
 	source := s.MoveSource
 	if source.ID == "" || source.ID == s.Popup || source.Session == "" || destination.Session != source.Session {
 		return ActionResult{}, fmt.Errorf("이동 대상이 올바르지 않습니다")
@@ -100,6 +100,10 @@ func (s *Service) movePane(destination Row) (ActionResult, error) {
 	}
 	ctx, cancel := context.WithTimeout(s.ctx, 20*time.Second)
 	defer cancel()
-	_, err = s.run(ctx, "tuios", "move-window", strconv.Itoa(number), "-s", source.Session, "-w", source.ID, "--follow")
+	args := []string{"move-window", strconv.Itoa(number), "-s", source.Session, "-w", source.ID}
+	if follow {
+		args = append(args, "--follow")
+	}
+	_, err = s.run(ctx, "tuios", args...)
 	return ActionResult{Exit: err == nil}, err
 }

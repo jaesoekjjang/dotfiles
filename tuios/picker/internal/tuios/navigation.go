@@ -194,6 +194,9 @@ func (s *Service) Preview(row Row) (Preview, error) {
 	if err := s.command(&panes, "list-windows", "-s", row.Session); err != nil {
 		return result, err
 	}
+	if row.Kind == "session" {
+		return sessionOverview(first(info.Display, row.Label, row.Session), tabs, panes, s.Popup), nil
+	}
 	var ws *workspace
 	for i := range tabs.Items {
 		w := &tabs.Items[i]
@@ -208,7 +211,7 @@ func (s *Service) Preview(row Row) (Preview, error) {
 	result.Location = fmt.Sprintf("%s › %d %s", first(info.Display, row.Session), ws.Number, first(ws.Name, "이름 없음"))
 	var members []pane
 	for _, p := range panes.Items {
-		if p.Number == ws.Number && p.ID != s.Popup {
+		if p.Number == ws.Number && p.ID != s.Popup && (!p.Minimized || row.Kind == "pane") {
 			members = append(members, p)
 		}
 	}
@@ -259,22 +262,17 @@ func (s *Service) Preview(row Row) (Preview, error) {
 	result.Current = selected.Focused
 	result.PaneID = selected.ID
 	result.Workspace = ws.Number
-	var out []byte
-	var err error
-	if s.read != nil {
-		var capture struct {
-			Content string `json:"content"`
+	if row.Kind != "pane" && len(members) > 1 {
+		result.Panes = s.captureLayout(row.Session, members)
+		for _, p := range result.Panes {
+			if p.ID == selected.ID {
+				result.Screen = p.Screen
+			}
 		}
-		err = s.read("capture-pane", map[string]any{"session": row.Session, "window": selected.ID, "ansi": true}, &capture)
-		out = []byte(capture.Content)
-	} else {
-		ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
-		defer cancel()
-		out, err = s.run(ctx, "tuios", "capture-pane", "-s", row.Session, "-w", selected.ID, "--ansi")
+		return result, nil
 	}
-	// Capture output is terminal text. Keep SGR colors but strip cursor, OSC and
-	// other controls in the UI before rendering it inside our own screen.
-	result.Screen = strings.TrimRight(string(out), "\r\n")
+	screen, err := s.captureScreen(row.Session, selected.ID)
+	result.Screen = screen
 	return result, err
 }
 
@@ -285,11 +283,20 @@ func (s *Service) Act(action string, row Row, name string) (ActionResult, error)
 		return ActionResult{}, s.sendInput(row, name)
 	}
 	switch action {
-	case "move":
-		return s.movePane(row)
+	case "move", "move-stay":
+		return s.movePane(row, action == "move")
 	case "enter":
 		if row.Kind == "pane" {
-			return ActionResult{Exit: true}, s.command(nil, "focus-window", strings.SplitN(row.ID, ":", 3)[2], "-s", row.Session)
+			if err := s.command(nil, "select-workspace", strconv.Itoa(row.Number), "-s", row.Session); err != nil {
+				return ActionResult{}, err
+			}
+			if err := s.command(nil, "focus-window", strings.SplitN(row.ID, ":", 3)[2], "-s", row.Session); err != nil {
+				return ActionResult{}, err
+			}
+			if row.Session != s.Target {
+				return ActionResult{Exit: true}, s.call("workspace.focus", map[string]any{"workspace_id": row.SessionID}, nil)
+			}
+			return ActionResult{Exit: true}, nil
 		}
 		if row.Kind == "workspace" {
 			if err := s.command(nil, "select-workspace", strconv.Itoa(row.Number), "-s", row.Session); err != nil {

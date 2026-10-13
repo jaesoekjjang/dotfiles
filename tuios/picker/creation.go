@@ -88,10 +88,10 @@ func (m *model) updateFolder(msg tea.KeyPressMsg) tea.Cmd {
 	key := msg.String()
 	if len(m.folderChoices) > 0 {
 		switch key {
-		case "ctrl+n":
+		case "ctrl+n", "ctrl+l", "ctrl+j":
 			m.folderChoiceIndex = (m.folderChoiceIndex + 1) % len(m.folderChoices)
 			return nil
-		case "ctrl+p", "shift+tab":
+		case "ctrl+p", "ctrl+h", "ctrl+k", "shift+tab":
 			if m.folderChoiceIndex < 0 {
 				m.folderChoiceIndex = 0
 			}
@@ -155,7 +155,7 @@ func (m *model) create() tea.Cmd {
 		return nil
 	}
 	if m.creationFolder.Path == "" {
-		m.status = "Ctrl+L로 시작 폴더를 지정하세요"
+		m.status = "Ctrl+O로 시작 폴더를 지정하세요"
 		return nil
 	}
 	action, row, name, folder := m.modal, m.modalRow, strings.TrimSpace(m.prompt.Value()), m.creationFolder.Path

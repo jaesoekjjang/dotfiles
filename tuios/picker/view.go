@@ -81,15 +81,12 @@ func panel(title, body string, width, height int) string {
 }
 
 func (m *model) helpLines() []string {
-	if m.mode == "move-pane" {
-		return []string{"C-n/p 이동 · Enter 보내고 따라가기 · Esc 취소"}
-	}
 	if m.folderEditing {
 		if m.projectOpen {
-			return []string{"C-n/p 이동 · Enter 선택 · Esc 목록 닫기"}
+			return []string{"C-h/l 또는 C-p/n 이동 · Enter 선택 · Esc 목록 닫기"}
 		}
 		if len(m.folderChoices) > 0 {
-			return []string{"C-n/p 후보 이동 · Tab 완성 · C-o 프로젝트 찾기", "Enter 적용 (후보 선택 시 완성) · Esc 목록 닫기"}
+			return []string{"C-h/l 또는 C-p/n 후보 이동 · Tab 완성 · C-o 프로젝트 찾기", "Enter 적용 (후보 선택 시 완성) · Esc 목록 닫기"}
 		}
 		return []string{"입력 시 폴더 후보 표시 · C-o 프로젝트 찾기", "Enter 적용 · Esc 돌아가기"}
 	}
@@ -106,7 +103,7 @@ func (m *model) helpLines() []string {
 	if m.mode == "workspaces" {
 		group = "WS"
 	}
-	items := []string{"Enter 이동", "C-n/p " + group, "C-j/k 행", "Tab/C-o 펼침", "C-g 전체", "C-u/d 스크롤", "C-s 입력", "C-a 추가", "C-r 이름", "C-x 종료", "C-/ 미리보기", "Esc 닫기"}
+	items := []string{"Enter 이동", "C-h/l・C-p/n " + group, "C-j/k 행", "C-o 접기/펼치기", "C-g 전체", "Tab/S-Tab pane", "C-u/d 스크롤", "C-s 입력", "C-a 추가", "C-r 이름", "C-x 종료", "C-/ 미리보기", "Esc 닫기"}
 	if m.creating() {
 		action := "Enter 생성"
 		if m.creationFocus == 1 {
@@ -115,7 +112,17 @@ func (m *model) helpLines() []string {
 		if m.creationFocus == 2 {
 			action = "Space 종류 전환"
 		}
-		items = []string{"Tab 종류 전환", "C-n/p 항목 이동", "C-l 폴더 변경", action, "Esc 취소"}
+		items = []string{"Tab 종류 전환", "C-h/l・C-p/n 항목 이동", "C-o 폴더 변경", action, "Esc 취소"}
+	}
+	if m.mode == "move-pane" {
+		items = []string{"C-h/l・C-p/n 선택", "Enter 이동 후 따라가기", "C-Enter pane만 이동", "Esc 취소"}
+	}
+	if m.modal == "" && m.search.Value() != "" {
+		for i := range items {
+			if items[i] == "Esc 닫기" || items[i] == "Esc 취소" {
+				items[i] = "Esc 검색 지우기"
+			}
+		}
 	}
 	var lines []string
 	line := ""
@@ -212,6 +219,9 @@ func (m *model) rowView(row tuios.Row, width int, selected bool) string {
 		marker = marker.Background(bg)
 	}
 	label := row.Label
+	if row.Kind == "workspace" && (label == "" || label == "이름 없음") {
+		label = "—"
+	}
 	prefix := ""
 	if row.Parent == "" && row.Kind != "new-workspace" {
 		arrow := "▸"
@@ -228,14 +238,29 @@ func (m *model) rowView(row tuios.Row, width int, selected bool) string {
 			prefix = ""
 		}
 		if row.Kind == "workspace" {
-			label = workspaceLabel(row)
+			label = fmt.Sprintf("%d  %s", row.Number, label)
 			if m.mode == "sessions" && strings.TrimSpace(m.search.Value()) != "" {
 				prefix = ""
-				label = fmt.Sprintf("%s › %d %s", m.sessionLabel(row), row.Number, row.Label)
+				name := row.Label
+				if name == "" || name == "이름 없음" {
+					name = "—"
+				}
+				label = fmt.Sprintf("%s › %d %s", m.sessionLabel(row), row.Number, name)
 			}
 		}
 	}
+	hasVisibleChildren := false
+	for _, child := range m.visible {
+		if child.Parent == row.ID {
+			hasVisibleChildren = true
+			break
+		}
+	}
+	hideSummary := row.Kind == "session" && m.expanded[row.ID] && hasVisibleChildren && strings.TrimSpace(m.search.Value()) == ""
 	badge := row.Agents.Label()
+	if hideSummary {
+		badge = ""
+	}
 	if row.Agents.Done > 0 {
 		status = green
 	} else if row.Agents.NeedsInput > 0 || row.Agents.Errored > 0 {
@@ -246,7 +271,7 @@ func (m *model) rowView(row tuios.Row, width int, selected bool) string {
 	if selected {
 		status = status.Background(lipgloss.Color("#383c45"))
 	}
-	if row.Current {
+	if row.Current && !hideSummary {
 		if badge != "" {
 			badge += " · "
 		}
@@ -395,6 +420,12 @@ func (m *model) listView(width, height int) string {
 
 func (m *model) previewView(width, height int) string {
 	w := max(1, width-4)
+	if len(m.preview.Panes) > 1 && !m.previewLoading {
+		header := muted.Render(fit(tuios.Clean(m.preview.Location), w))
+		header += "\n" + muted.Render(fit("● 입력 대상: "+tuios.Clean(strings.TrimPrefix(m.preview.Title, "● ")), w))
+		body := splitPreview(m.preview.Panes, m.preview.PaneID, w, max(1, height-5))
+		return panel("Workspace preview", header+"\n\n"+body, width, height)
+	}
 	title, location := bright.Render(tuios.Clean(m.preview.Title)), muted.Render(tuios.Clean(m.preview.Location))
 	if m.previewLoading {
 		title = muted.Render("불러오는 중…")
@@ -405,7 +436,11 @@ func (m *model) previewView(width, height int) string {
 		status = green.Render("current")
 	}
 	header := []string{"", pair(title, location, w), pair(muted.Render(tuios.Clean(m.preview.Path)), status, w), border.Render(strings.Repeat("─", w)), ""}
-	return panel("Preview", strings.Join(header, "\n")+"\n"+m.viewport.View(), width, height)
+	panelTitle := "Preview"
+	if m.preview.Overview {
+		panelTitle = "Session overview"
+	}
+	return panel(panelTitle, strings.Join(header, "\n")+"\n"+m.viewport.View(), width, height)
 }
 
 func (m *model) View() tea.View {

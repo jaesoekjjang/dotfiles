@@ -15,3 +15,9 @@ type agentRefresh struct {
 func nextAgentTick() tea.Cmd {
 	return tea.Tick(2*time.Second, func(time.Time) tea.Msg { return agentTick{} })
 }
+
+type layoutRefresh struct {
+	generation int
+	preview    tuios.Preview
+	err        error
+}

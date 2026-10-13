@@ -80,7 +80,7 @@ func TestCreationFocusAndFolderCompletionKeys(t *testing.T) {
 func TestProjectSearchNavigationPasteCancelAndStaleLoad(t *testing.T) {
 	m := ready()
 	pressCreate(m)
-	m.Update(ctrl('l'))
+	m.Update(ctrl('o'))
 	original := m.folderInput.Value()
 	m.openProjects() // Inject results rather than invoking external processes.
 	stale := m.projectGeneration
@@ -122,7 +122,7 @@ func TestQuickTypeSwitchPreservesEditingAndFullHeight(t *testing.T) {
 	if m.modal == original || m.prompt.Value() != "keep name" || m.prompt.Position() != 3 || !m.prompt.Focused() || m.creationFolder.Path != folder {
 		t.Fatal("quick toggle must preserve input and caret")
 	}
-	m.Update(ctrl('l'))
+	m.Update(ctrl('o'))
 	m.folderInput.SetValue("~/draft")
 	m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	m.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
@@ -146,7 +146,7 @@ func TestQuickTypeSwitchPreservesEditingAndFullHeight(t *testing.T) {
 func TestAutomaticSuggestionsDoNotHijackTypedDirectory(t *testing.T) {
 	m := ready()
 	pressCreate(m)
-	m.Update(ctrl('l'))
+	m.Update(ctrl('o'))
 	base := t.TempDir()
 	os.Mkdir(filepath.Join(base, "child"), 0700)
 	m.folderInput.SetValue("")
@@ -158,7 +158,7 @@ func TestAutomaticSuggestionsDoNotHijackTypedDirectory(t *testing.T) {
 	if m.folderEditing || m.creationFolder.Path != base {
 		t.Fatal("Enter must apply the typed parent, not its suggested child")
 	}
-	m.Update(ctrl('l'))
+	m.Update(ctrl('o'))
 	m.folderInput.SetValue(base + "/")
 	m.folderInput.CursorEnd()
 	m.Update(tea.KeyPressMsg{Code: 'c', Text: "c"})

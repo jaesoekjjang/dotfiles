@@ -232,7 +232,6 @@ func TestPreviewSelectsLastRealPaneAndExplicitPane(t *testing.T) {
 	h := fixture(t)
 	for _, r := range []Row{
 		{Kind: "workspace", Number: 1, Session: "source"},
-		{Kind: "session", Session: "source"},
 		{ID: "pane:1:editor", Kind: "pane", Number: 1, Session: "source"},
 	} {
 		p, err := h.s.Preview(r)
@@ -501,5 +500,17 @@ func TestUnixRPCFramingAndErrors(t *testing.T) {
 				t.Fatal(request)
 			}
 		})
+	}
+}
+
+func TestPaneNavigationSelectsWorkspaceAndPaneBeforeSession(t *testing.T) {
+	h := fixture(t)
+	result, err := h.s.Act("enter", Row{ID: "pane:wbb:editor", Kind: "pane", Session: "destination", SessionID: "wbb", Number: 2}, "")
+	if err != nil || !result.Exit {
+		t.Fatal(err)
+	}
+	want := []string{"tuios select-workspace 2 -s destination --json", "tuios focus-window editor -s destination --json", `workspace.focus {"workspace_id":"wbb"}`}
+	if !reflect.DeepEqual(h.events, want) {
+		t.Fatal(h.events)
 	}
 }

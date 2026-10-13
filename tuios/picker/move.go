@@ -5,21 +5,25 @@ import tea "charm.land/bubbletea/v2"
 func (m *model) updateMove(msg tea.KeyPressMsg) tea.Cmd {
 	switch msg.String() {
 	case "esc":
-		return tea.Quit
-	case "ctrl+n", "ctrl+j", "down":
+		return m.escapeSearch()
+	case "ctrl+n", "ctrl+l", "ctrl+j", "down":
 		m.move(1, false)
-	case "ctrl+p", "ctrl+k", "up":
+	case "ctrl+p", "ctrl+h", "ctrl+k", "up":
 		m.move(-1, false)
-	case "enter":
+	case "enter", "ctrl+enter":
 		if row, ok := m.selected(); ok {
-			return m.perform("move", row, "")
+			action := "move"
+			if msg.String() == "ctrl+enter" {
+				action = "move-stay"
+			}
+			return m.perform(action, row, "")
 		}
 	default:
-		before := m.search.Value()
+		before, anchor := m.search.Value(), m.selectedID()
 		var cmd tea.Cmd
 		m.search, cmd = m.search.Update(msg)
 		if before != m.search.Value() {
-			m.refilter("", true)
+			m.searchChanged(before, anchor)
 		}
 		return cmd
 	}

@@ -88,7 +88,7 @@ func TestTreeNavigationAndWrapping(t *testing.T) {
 	if m.selectedID() != "2" || m.expanded["2"] {
 		t.Fatal("child folds to parent")
 	}
-	m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	m.Update(ctrl('o'))
 	if !m.expanded["2"] {
 		t.Fatal("tab expands")
 	}
@@ -136,6 +136,8 @@ func TestGroupAndRowKeysTraverseBothPickerHierarchies(t *testing.T) {
 				{ID: "a", Kind: root}, {ID: "a1", Parent: "a", Kind: child},
 				{ID: "b", Kind: root}, {ID: "b1", Parent: "b", Kind: child}, {ID: "b2", Parent: "b", Kind: child},
 			}}})
+			m.expanded["a"], m.expanded["b"] = true, true
+			m.refilter("a", false)
 			for _, step := range []struct {
 				key  rune
 				want string
@@ -307,6 +309,7 @@ func TestChildRenamePreservesQuerySelectionAndTree(t *testing.T) {
 			f := &fakeController{snapshot: &data}
 			m := newModel(f, mode)
 			m.Update(loadedMsg{snapshot: data})
+			m.expanded["parent"] = true
 			m.search.SetValue("term")
 			m.refilter("child", false)
 			m.Update(ctrl('r'))

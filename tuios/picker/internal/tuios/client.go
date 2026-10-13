@@ -34,7 +34,16 @@ type ActionResult struct {
 	Warning  string // Creation succeeded partly; show the result, never retry blindly.
 }
 
+type PreviewPane struct {
+	ID, Title, Screen, AgentState string
+	Path, Command                 string
+	Current                       bool
+	X, Y, Width, Height           int
+}
+
 type Preview struct {
+	Overview                      bool
+	Panes                         []PreviewPane
 	Title, Path, Location, Screen string
 	PaneID                        string
 	Workspace                     int
@@ -196,6 +205,11 @@ type workspaceList struct {
 	Order []int       `json:"order"`
 }
 type pane struct {
+	X          int    `json:"x"`
+	Y          int    `json:"y"`
+	Width      int    `json:"width"`
+	Height     int    `json:"height"`
+	Minimized  bool   `json:"minimized"`
 	AgentState string `json:"agent_state"`
 	ID         string `json:"window_id"`
 	Number     int    `json:"workspace"`

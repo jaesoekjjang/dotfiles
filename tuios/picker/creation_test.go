@@ -16,7 +16,7 @@ func TestFolderEditorAppliesOnlyToThisCreation(t *testing.T) {
 	pressCreate(m)
 	m.prompt.SetValue("검증용")
 	original := m.creationFolder.Path
-	m.Update(ctrl('l'))
+	m.Update(ctrl('o'))
 	if !m.folderEditing || !m.folderInput.Focused() || m.prompt.Focused() {
 		t.Fatal("folder editor must own keyboard input")
 	}
@@ -25,7 +25,7 @@ func TestFolderEditorAppliesOnlyToThisCreation(t *testing.T) {
 	if m.folderEditing || m.creationFolder.Path != original || m.prompt.Value() != "검증용" || !m.prompt.Focused() {
 		t.Fatal("cancel should restore the name form and its original folder")
 	}
-	m.Update(ctrl('l'))
+	m.Update(ctrl('o'))
 	m.folderInput.SetValue(filepath.Join(t.TempDir(), "missing"))
 	m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if !m.folderEditing || m.creationFolder.Path != original || m.status == "" {
@@ -97,7 +97,7 @@ func TestCreationTypeAndParentFromFilteredChild(t *testing.T) {
 				t.Fatal("switch without losing name or parent")
 			}
 			view := ansi.Strip(m.View().Content)
-			if !strings.Contains(view, "project") || !strings.Contains(view, "C-n/p 항목 이동") || strings.Contains(view, "Preview") {
+			if !strings.Contains(view, "project") || !strings.Contains(view, "C-h/l・C-p/n 항목 이동") || strings.Contains(view, "Preview") {
 				t.Fatal(view)
 			}
 			switchCreationWithKeys(m)

@@ -148,10 +148,10 @@ func (m *model) updateProjects(msg tea.KeyPressMsg) tea.Cmd {
 		m.projectInput.Blur()
 		m.status = ""
 		return m.folderInput.Focus()
-	case "ctrl+n", "tab", "ctrl+p", "shift+tab":
+	case "ctrl+n", "ctrl+l", "ctrl+j", "tab", "ctrl+p", "ctrl+h", "ctrl+k", "shift+tab":
 		if len(m.folderChoices) > 0 {
 			step := 1
-			if msg.String() == "ctrl+p" || msg.String() == "shift+tab" {
+			if msg.String() == "ctrl+p" || msg.String() == "ctrl+h" || msg.String() == "ctrl+k" || msg.String() == "shift+tab" {
 				step = -1
 			}
 			m.folderChoiceIndex = (m.folderChoiceIndex + step + len(m.folderChoices)) % len(m.folderChoices)
