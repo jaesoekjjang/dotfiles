@@ -514,3 +514,18 @@ func TestPaneNavigationSelectsWorkspaceAndPaneBeforeSession(t *testing.T) {
 		t.Fatal(h.events)
 	}
 }
+
+func TestCurrentPanePinsOriginalAndRejectsPopup(t *testing.T) {
+	h := fixture(t)
+	t.Setenv("TUIOS_ACTIVE_PANE_ID", "editor")
+	row, err := h.s.Current("pane")
+	if err != nil || row.Kind != "pane" || row.ID != "pane:waa:editor" || row.Label != "Editor" || row.Number != 1 {
+		t.Fatal(row, err)
+	}
+	for _, id := range []string{"", "popup", "gone"} {
+		t.Setenv("TUIOS_ACTIVE_PANE_ID", id)
+		if _, err := h.s.Current("pane"); err == nil {
+			t.Fatal("unsafe close target accepted:", id)
+		}
+	}
+}

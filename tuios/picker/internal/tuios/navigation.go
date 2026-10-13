@@ -457,6 +457,27 @@ func (s *Service) FinishClose(kind, selected, current, target string) error {
 }
 
 func (s *Service) Current(mode string) (Row, error) {
+	if mode == "pane" {
+		id := os.Getenv("TUIOS_ACTIVE_PANE_ID")
+		if id == "" || id == s.Popup {
+			return Row{}, fmt.Errorf("종료할 원래 pane을 확인하지 못했습니다")
+		}
+		var panes paneList
+		if err := s.command(&panes, "list-windows", "-s", s.Target); err != nil {
+			return Row{}, err
+		}
+		sessionID, err := s.sessionID(s.Target)
+		if err != nil {
+			return Row{}, err
+		}
+		for _, p := range panes.Items {
+			if p.ID == id {
+				return Row{ID: "pane:" + sessionID + ":" + id, Kind: "pane", Session: s.Target, SessionID: sessionID, Number: p.Number, Label: first(p.Custom, p.Display, p.Title, "pane"), Panes: 1, Current: true}, nil
+			}
+		}
+		return Row{}, fmt.Errorf("종료할 pane이 이미 닫혔습니다")
+	}
+
 	if mode == "session" {
 		id, err := s.sessionID(s.Target)
 		if err != nil {
@@ -474,7 +495,7 @@ func (s *Service) Current(mode string) (Row, error) {
 	}
 	for _, w := range data.Items {
 		if w.Current {
-			return Row{ID: strconv.Itoa(w.Number), Kind: "workspace", Session: s.Target, Number: w.Number, Label: first(w.Name, strconv.Itoa(w.Number)), Panes: w.Count, Current: true}, nil
+			return Row{ID: strconv.Itoa(w.Number), Kind: "workspace", Session: s.Target, Number: w.Number, Label: w.Name, Panes: w.Count, Current: true}, nil
 		}
 	}
 	return Row{}, fmt.Errorf("현재 workspace를 찾을 수 없습니다")

@@ -483,3 +483,35 @@ func TestCapturedControlsAndResponsiveGeometry(t *testing.T) {
 		}
 	}
 }
+
+func TestStandaloneCloseRequiresYForEveryTarget(t *testing.T) {
+	for _, kind := range []string{"pane", "workspace", "session"} {
+		for _, key := range []string{"y", "n", "enter", "esc", "x"} {
+			m := ready()
+			m.standalone = true
+			m.modal = "close"
+			m.modalRow = tuios.Row{ID: "target", Kind: kind}
+			msg := tea.KeyPressMsg{Code: rune(key[0])}
+			if key == "enter" {
+				msg = tea.KeyPressMsg{Code: tea.KeyEnter}
+			}
+			if key == "esc" {
+				msg = tea.KeyPressMsg{Code: tea.KeyEscape}
+			}
+			_, cmd := m.Update(msg)
+			if key == "y" {
+				if cmd == nil {
+					t.Fatal("missing close")
+				}
+				cmd()
+				if len(m.service.(*fakeController).actions) != 1 {
+					t.Fatal("y did not close")
+				}
+			} else {
+				if len(m.service.(*fakeController).actions) != 0 || m.busy {
+					t.Fatal("closed without y", kind, key)
+				}
+			}
+		}
+	}
+}

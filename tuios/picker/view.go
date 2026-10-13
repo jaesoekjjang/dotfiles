@@ -305,17 +305,7 @@ func (m *model) rowView(row tuios.Row, width int, selected bool) string {
 
 func (m *model) listView(width, height int) string {
 	var lines []string
-	if m.modal == "close" {
-		row := m.modalRow
-		label := row.Label
-		if row.Kind == "workspace" {
-			label = workspaceLabel(row)
-			if m.mode == "sessions" && row.Parent != "" {
-				label = m.sessionLabel(row) + " › " + label
-			}
-		}
-		lines = []string{"", bright.Render(row.Kind + " '" + tuios.Clean(label) + "' 종료?"), "", muted.Render(fmt.Sprintf("%d panes", row.Panes)), "", amber.Render("y 종료"), muted.Render("Enter / n / Esc 취소")}
-	} else if m.folderEditing {
+	if m.folderEditing {
 		input := m.folderInput.View()
 		if m.projectOpen {
 			input = m.projectInput.View()
@@ -390,7 +380,7 @@ func (m *model) listView(width, height int) string {
 	} else if m.modal == "send" {
 		lines = []string{muted.Render("대상 workspace"), bright.Render(fit(tuios.Clean(m.inputTarget), width-4)), muted.Render("대상 pane"), bright.Render(fit(tuios.Clean(m.modalRow.Label), width-4)), "", m.prompt.View(), "", muted.Render("텍스트와 Enter를 보냅니다")}
 	} else if m.modal != "" {
-		lines = []string{"", m.prompt.View(), "", muted.Render("Enter 저장 · Esc 취소")}
+		lines = []string{"", m.prompt.View()}
 	} else if m.loading && len(m.rows) == 0 {
 		lines = []string{muted.Render("불러오는 중…")}
 	} else {
@@ -444,6 +434,9 @@ func (m *model) previewView(width, height int) string {
 }
 
 func (m *model) View() tea.View {
+	if m.modal == "close" || m.standalone {
+		return m.closeView()
+	}
 	d := m.dimensions()
 	input := m.search.View()
 	total := len(filterRows(m.rows, m.expanded, ""))
@@ -451,8 +444,14 @@ func (m *model) View() tea.View {
 		total = len(m.rows)
 	}
 	count := muted.Render(fmt.Sprintf("%d/%d", len(m.visible), total))
-	if m.creating() {
-		input = bright.Render("새 항목 만들기")
+	if m.modal != "" {
+		heading := "이름 변경"
+		if m.creating() {
+			heading = "새 항목 만들기"
+		} else if m.modal == "send" {
+			heading = "입력 보내기"
+		}
+		input = bright.Render(heading)
 		count = ""
 	}
 	left := pair(input, count, d.leftW) + "\n" + border.Render(strings.Repeat("─", d.leftW)) + "\n\n" + m.listView(d.leftW, d.leftH-3)

@@ -317,7 +317,7 @@ launcher = ['a']
 next_session = [')']
 paste_image = ['I']
 prefix_close_session = []
-prefix_close_window = ['x']
+prefix_close_window = []
 prefix_command_palette = ['P']
 prefix_debug = ['D']
 prefix_detach = ['ctrl+d']
@@ -495,8 +495,8 @@ name = 'close-current-session'
 type = 'popup'
 command = 'env TUIOS_PICKER_POPUP=1 tuios-picker close-session'
 description = '현재 session 종료 후 다른 session으로 이동'
-width = '70%'
-height = '30%'
+width = '84'
+height = '9'
 
 [[keybindings.command]]
 key = 'prefix+&'
@@ -504,8 +504,8 @@ name = 'close-current-workspace'
 type = 'popup'
 command = 'env TUIOS_PICKER_POPUP=1 tuios-picker close-workspace'
 description = '현재 workspace 종료'
-width = '70%'
-height = '30%'
+width = '84'
+height = '9'
 
 [[keybindings.command]]
 key = 'prefix+s'
@@ -773,3 +773,21 @@ left = ['mode', 'custom/current_session', 'workspaces', 'trail', 'tape']
 command = 'printf "SESSION: %s\n" "$TUIOS_SESSION"'
 refresh = '2s'
 max-width = 48
+
+[[keybindings.command]]
+key = 'prefix+x'
+name = 'confirm-close-current-pane'
+type = 'popup'
+command = 'env TUIOS_PICKER_POPUP=1 tuios-picker close-pane'
+description = '현재 pane 종료 (y 확인)'
+width = '84'
+height = '9'
+
+[[keybindings.command]]
+key = 'prefix+X'
+name = 'confirm-close-current-workspace'
+type = 'popup'
+command = 'env TUIOS_PICKER_POPUP=1 tuios-picker close-workspace'
+description = '현재 workspace 종료 (y 확인)'
+width = '84'
+height = '9'

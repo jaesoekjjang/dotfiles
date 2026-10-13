@@ -420,7 +420,7 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = "입력 전송됨 · " + m.inputTarget + " › " + m.modalRow.Label
 			return m, m.requestPreview()
 		}
-		if msg.result.Exit {
+		if msg.result.Exit || m.standalone {
 			return m, tea.Quit
 		}
 		m.status = ""
@@ -466,7 +466,9 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			if m.modal == "close" {
 				if key == "y" {
 					row := m.modalRow
-					m.modal = ""
+					if !m.standalone {
+						m.modal = ""
+					}
 					m.prompt.Blur()
 					m.search.Focus()
 					m.anchor = m.afterClose(row)

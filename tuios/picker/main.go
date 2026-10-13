@@ -15,7 +15,7 @@ func run(args []string) error {
 		command = args[0]
 	}
 	if command == "--help" || command == "help" || command == "-h" {
-		fmt.Println("tuios-picker [sessions|workspaces|move-pane|close-session|close-workspace|last-session|next-workspace|prev-workspace|record-session]\nGo / Bubble Tea · TUIOS 안에서 실행")
+		fmt.Println("tuios-picker [sessions|workspaces|move-pane|close-pane|close-session|close-workspace|last-session|next-workspace|prev-workspace|record-session]\nGo / Bubble Tea · TUIOS 안에서 실행")
 		return nil
 	}
 	s := tuios.New()
@@ -39,7 +39,7 @@ func run(args []string) error {
 		return s.Cycle(1)
 	case "prev-workspace":
 		return s.Cycle(-1)
-	case "sessions", "workspaces", "move-pane", "close-session", "close-workspace":
+	case "sessions", "workspaces", "move-pane", "close-pane", "close-session", "close-workspace":
 		defer s.ClosePopup()
 		mode := command
 		if strings.HasPrefix(command, "close-") {
