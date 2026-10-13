@@ -114,6 +114,13 @@
 # ============================================================================
 
 [appearance]
+zoom_animation = false
+zoom_borderless = false
+dock_pill_caps = false
+dock_workspace_label_max = 12
+dock_workspace_tooltip = false
+dock_compact = true
+dock_workspace_tabs = true
 border_style = 'rounded'
 zen_mode = 'disabled'
 links = 'all'
@@ -128,17 +135,19 @@ auto_enter_terminal_on_focus = 'all'
 click_to_type = 'single'
 dockbar_position = 'top'
 preferred_shell = '/bin/zsh'
-motion = 'basic'
-modal_dim = 30
+motion = "none"
+modal_dim = 0
 confirm_quit = false
 whichkey_enabled = true
 whichkey_position = 'bottom-right'
 window_title_position = 'hidden'
 hide_clock = false
-show_clock = false
-show_cpu = false
-show_ram = false
-theme = 'seoulbones_dark'
+show_clock = true
+show_cpu = true
+show_ram = true
+# 후보: japanesque / snazzy / pencil_dark / gruvbox_dark_hard
+# 라이트 기본값; 커스텀 테마는 tuios/themes/README.md 참고
+theme = 'everforest_light_medium'
 shared_borders = false
 border_focused_color = ''
 border_unfocused_color = ''
@@ -154,18 +163,18 @@ tiling_scheme = ''
 master_ratio = 50
 scroll_column_width = 55
 scroll_column_max = 90
-zoom_size = 0
+zoom_size = 99
 panel_padding = 2
 clock_format = '15:04:05'
 dim_unfocused = 0
 dim_multifocus = false
 master_position = ''
 master_count = 0
-background = 'off'
-pane_background = '#202329'
-desktop_background = '#202329'
-window_chrome_background = '#202329'
-dock_background = '#202329'
+background = 'theme'
+pane_background = ''
+desktop_background = ''
+window_chrome_background = ''
+dock_background = ''
 
 [appearance.scrollbar]
 style = 'track'
@@ -184,15 +193,16 @@ cursor_bg = ''
 cursor_fg = ''
 
 [appearance.sidebar]
+show_numbers = false
 enabled = false
-position = 'right'
+position = 'hidden'
 width = 36
 workspaces = ''
 sections = 'sessions:32,spacer:3,terminals:25,agents:40'
 folder_click = ''
 editor = 'nvim'
 file_delete = ''
-background = '#202329'
+background = ''
 agent_rest_fold = ''
 
 [notifications]
@@ -201,7 +211,8 @@ warning_duration = 0
 error_duration = 0
 
 [notifications.agent]
-sound_mode = ''
+sound = true
+sound_mode = "both"
 command = ''
 quiet_hours = ''
 
@@ -737,6 +748,7 @@ font_file = ''
 cursor = false
 
 [screensaver]
+enabled = true
 idle_minutes = 10
 effect = 'random'
 
@@ -753,7 +765,7 @@ builtins = 'all'
 patterns = []
 alphabet = 'asdfghjkl'
 dim = 60
-all_panes = false
+all_panes = true
 
 [scratch]
 width = '80%'
@@ -765,7 +777,9 @@ height = 12
 corner = 'bottom-right'
 
 [dock]
-left = ['mode', 'custom/current_session', 'workspaces', 'trail', 'tape']
+center = ["tape", "windows"]
+right = ["notifications", "copy-help", "cpu", "ram", "clock"]
+left = ["mode", "custom/current_session", "workspaces"]
 
 [dock.clock]
 [dock.custom]

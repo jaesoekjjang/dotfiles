@@ -1,0 +1,23 @@
+{
+  "fg": "#e4dfd3",
+  "cursor": "#fca02f",
+  "black": "#17384c",
+  "red": "#d15123",
+  "green": "#027c9b",
+  "yellow": "#fca02f",
+  "blue": "#1e4950",
+  "purple": "#68d3f1",
+  "cyan": "#50a3b5",
+  "white": "#deb88d",
+  "bright_black": "#434b53",
+  "bright_red": "#d38678",
+  "bright_green": "#618d98",
+  "bright_yellow": "#fdd39f",
+  "bright_blue": "#1bbcdd",
+  "bright_purple": "#bbe3ee",
+  "bright_cyan": "#87acb3",
+  "bright_white": "#fee3ce",
+  "id": "sea_shells_deep",
+  "display_name": "Sea Shells Deep",
+  "bg": "#09141b"
+}

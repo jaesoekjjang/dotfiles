@@ -78,6 +78,9 @@ if $refresh_tuios && ! cmp -s "$DOTFILES/tuios/config.toml" "$tuios_config"; the
   backup_existing "$tuios_config"
   cp "$DOTFILES/tuios/config.toml" "$tuios_config"
 fi
+for theme_file in "$DOTFILES/tuios/themes"/*.json(N); do
+  link_config "$theme_file" "${tuios_config:h}/themes/${theme_file:t}"
+done
 link_config "$DOTFILES/lazygit/config.yml" "$HOME/Library/Application Support/lazygit/config.yml"
 for name in yazi ghostty nvim aerospace; do
   link_config "$DOTFILES/$name" "$HOME/.config/$name"

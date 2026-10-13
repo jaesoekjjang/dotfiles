@@ -1,0 +1,23 @@
+{
+  "id": "noctis_lilac",
+  "display_name": "Noctis Lilac",
+  "bg": "#e9e7f3",
+  "fg": "#0c006b",
+  "cursor": "#5c49e9",
+  "black": "#0c006b",
+  "red": "#e34e1c",
+  "green": "#00b368",
+  "yellow": "#f49725",
+  "blue": "#0094f0",
+  "purple": "#ff5792",
+  "cyan": "#00bdd6",
+  "white": "#8ca6a6",
+  "bright_black": "#0f0080",
+  "bright_red": "#ff4000",
+  "bright_green": "#00d17a",
+  "bright_yellow": "#ff8c00",
+  "bright_blue": "#0fa3ff",
+  "bright_purple": "#ff6b9f",
+  "bright_cyan": "#00cbe6",
+  "bright_white": "#bbc3c4"
+}
