@@ -1,0 +1,23 @@
+{
+  "id": "papercolor_light",
+  "display_name": "PaperColor Light",
+  "bg": "#eeeeee",
+  "fg": "#444444",
+  "cursor": "#444444",
+  "black": "#eeeeee",
+  "bright_black": "#bcbcbc",
+  "red": "#af0000",
+  "bright_red": "#d70000",
+  "green": "#008700",
+  "bright_green": "#d70087",
+  "yellow": "#5f8700",
+  "bright_yellow": "#8700af",
+  "blue": "#0087af",
+  "bright_blue": "#d75f00",
+  "purple": "#878787",
+  "bright_purple": "#d75f00",
+  "cyan": "#005f87",
+  "bright_cyan": "#005faf",
+  "white": "#444444",
+  "bright_white": "#005f87"
+}

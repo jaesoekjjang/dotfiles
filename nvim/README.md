@@ -10,6 +10,33 @@ Neovim 0.12에서는 parser가 없는 파일 타입의 `get_parser()`가 `nil`�
 parser 없이 정상 동작해야 한다. 삭제된 컴파일러 wrapper가 `CC`에 남은 경우에는
 parser 설치가 시스템 컴파일러를 사용하도록 한다.
 
+# TUIOS 테마 연동
+
+Neovim은 로컬 TUIOS `config.toml`의 `[appearance] theme`을 읽는다. 저장된 설정을 감시하므로 새 Neovim뿐 아니라 실행 중인 편집기도 테마를 확정하면 갱신된다. 테마 선택기의 미리보기는 파일을 저장하지 않으므로 Neovim에 반영하지 않는다. `:ThemeSync`로 수동 재적용할 수도 있다.
+
+| TUIOS | Neovim |
+| --- | --- |
+| `rose_pine_dawn_official`, `rose_pine_dawn` | Rose Pine Dawn (`rose-pine-dawn`, light) |
+| `rose_pine` | Rose Pine Main (`rose-pine-main`, dark) |
+| `rose_pine_moon` | Rose Pine Moon (`rose-pine-moon`, dark) |
+| `everforest_light_hard/medium/soft` | Everforest light + 같은 hard/medium/soft 배경 |
+| `zenwritten_light`, `zenwritten_dark` | Zenwritten (`zenwritten`, 같은 light/dark) |
+| `zenbones_light_dim` | Zenbones light + 공식 `lightness = "dim"` |
+| `zenbones` (= light), `zenbones_light`, `zenbones_dark` | Zenbones (`zenbones`, 같은 light/dark) |
+| `kanagawa_dragon` | Kanagawa Dragon (`kanagawa-dragon`, dark) |
+| `monokai_pro_light` | Monokai Pro Light (`monokai-pro-light`, light) |
+| 대응 없는 테마·설정 없음·Rose Pine 미설치 | Kanagawa Dragon fallback |
+
+Rose Pine과 [Everforest](https://github.com/sainnhe/everforest)는 lazy.nvim으로 설치하며 버전은 lockfile에 고정한다. lualine도 선택한 colorscheme에 맞춰 자동 변경한다. 연동은 저장된 공통 설정을 기준으로 하고, 세션별 임시 테마는 반영하지 않는다. 이 변경 전에 실행한 Neovim은 한 번 재시작해야 감시 기능이 로드된다.
+
+Everforest Soft는 tuios에서 조정했던 진한 본문색 `#4d5a62`도 적용한다. Hard·Medium으로 전환하면 공식 본문색으로 돌아간다.
+
+[Zenbones/Zenwritten](https://github.com/zenbones-theme/zenbones.nvim)은 Lush와 함께 설치한다.
+
+Monokai Pro Light는 [monokai-pro.nvim](https://github.com/loctvl842/monokai-pro.nvim)을 사용한다. 본문 배경과 글자색은 tuios의 `monokai_pro_light` 팔레트와 일치한다.
+
+연동 검증: `nvim --headless -u NONE -l tests/theme_sync.lua` (Dotfiles 루트에서 실행).
+
 # 검색과 picker
 
 파일명·본문·버퍼·최근 파일과 나머지 선택 UI를 Snacks로 통일한다.

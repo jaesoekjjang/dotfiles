@@ -1,0 +1,251 @@
+#!/usr/bin/env python3
+"""Browse TUIOS themes within one polarity, with reversible live previews."""
+import concurrent.futures
+import json
+import os
+from pathlib import Path
+import shlex
+import socket
+import subprocess
+import sys
+import tempfile
+
+
+def rpc(verb, params):
+    runtime = os.environ.get("XDG_RUNTIME_DIR")
+    path = os.environ.get("TUIOS_SOCKET") or str(
+        Path(runtime) / "tuios/tuios.sock" if runtime else Path(f"/tmp/tuios-{os.getuid()}/tuios.sock")
+    )
+    with socket.socket(socket.AF_UNIX) as connection:
+        connection.settimeout(20)
+        connection.connect(path)
+        connection.sendall((json.dumps({"id": "dotfiles-theme-picker", "verb": verb, "params": params}) + "\n").encode())
+        with connection.makefile() as stream:
+            reply = json.loads(stream.readline())
+    if reply.get("error"):
+        raise RuntimeError(reply["error"]["message"])
+    return reply["result"]
+
+
+def load_palettes():
+    # The standalone CLI lists every id; the socket roster can be truncated.
+    ids = subprocess.check_output(["tuios", "--list-themes"], text=True).splitlines()
+    def describe(theme):
+        return theme, rpc("list-themes", {"theme": theme})["palette"]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+        return dict(pool.map(describe, ids))
+
+
+def original_theme(session):
+    # The daemon's get-option can report an unset override (empty string)
+    # while the attached client is drawing a configured theme. Read the client.
+    output = subprocess.check_output(
+        ["tuios", "get-config", "appearance.theme", "-s", session, "--json"], text=True
+    )
+    return json.loads(output)["value"]
+
+
+def group_ids(palettes, dark):
+    return sorted(name for name, palette in palettes.items() if palette["dark"] == dark)
+
+
+def favorites_path():
+    config = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+    return config / "tuios/theme-favorites.json"
+
+
+def load_favorites():
+    try:
+        value = json.loads(favorites_path().read_text())
+    except FileNotFoundError:
+        return set()
+    if not isinstance(value, list) or any(not isinstance(name, str) for name in value):
+        raise ValueError("즐겨찾기 파일은 테마 이름 배열이어야 합니다")
+    return set(value)
+
+
+def toggle_favorite(theme):
+    favorites = load_favorites()
+    if theme in favorites:
+        favorites.remove(theme)
+    else:
+        favorites.add(theme)
+    path = favorites_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as stream:
+            temporary = Path(stream.name)
+            json.dump(sorted(favorites), stream, ensure_ascii=False)
+            stream.write("\n")
+        temporary.replace(path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def apply_theme(session, theme):
+    result = rpc("run-command", {"session": session, "command": "SetTheme", "args": [theme]})
+    if result.get("routed") is not True:
+        raise RuntimeError("테마를 미리볼 창이 연결되어 있지 않습니다")
+
+
+def commit_theme(session, theme):
+    # The attached client's ordinary settings path applies and persists this.
+    result = rpc("set-option", {"session": session, "key": "appearance.theme", "value": theme})
+    if result.get("applied") is not True:
+        raise RuntimeError(result.get("reason", "테마를 적용하지 못했습니다"))
+
+
+def swatches(palette):
+    def rgb(hex_color):
+        return ";".join(str(int(hex_color[i:i+2], 16)) for i in (1, 3, 5))
+    fg, bg = rgb(palette["fg"]), rgb(palette["bg"])
+    print(f"\033[38;2;{fg}m\033[48;2;{bg}m {palette['display_name']} \033[0m")
+    print(f"배경 {palette['bg']} · 글자 {palette['fg']}\n")
+    print(f"\033[38;2;{fg}m\033[48;2;{bg}m 한글 본문 · Readable terminal text 0123456789 \033[0m\n")
+    for swatch in palette["swatches"][2:]:
+        print(f"\033[38;2;{rgb(swatch['hex'])}m■■\033[0m {swatch['name']}")
+
+
+def view_path(bundle):
+    return Path(bundle).with_suffix(".view.json")
+
+
+def theme_rows(palettes, dark, favorites_only):
+    favorites = load_favorites()
+    ids = group_ids(palettes, dark)
+    return [name + ("\t★" if name in favorites else "\t ")
+            for name in ids if not favorites_only or name in favorites]
+
+
+def view_prompt(state):
+    return ("Dark" if state["dark"] else "Light") + (" ★" if state["favorites_only"] else "") + " › "
+
+
+def refresh_rows(bundle, action, theme=""):
+    data = json.loads(Path(bundle).read_text())
+    state = json.loads(view_path(bundle).read_text())
+    if action == "toggle" and theme in group_ids(data["palettes"], state["dark"]):
+        toggle_favorite(theme)
+    elif action == "filter":
+        state["favorites_only"] = not state["favorites_only"]
+        view_path(bundle).write_text(json.dumps(state))
+    for row in theme_rows(data["palettes"], state["dark"], state["favorites_only"]):
+        print(row)
+
+
+def choose(palettes, original, dark, bundle, favorites_only=False, query=""):
+    script = shlex.quote(str(Path(__file__).resolve()))
+    data = shlex.quote(str(bundle))
+    ids = group_ids(palettes, dark)
+    if not ids:
+        raise RuntimeError(f"{'Dark' if dark else 'Light'} 테마가 없습니다")
+    state = {"dark": dark, "favorites_only": favorites_only}
+    if view_path(bundle).exists():
+        state["favorites_only"] = json.loads(view_path(bundle).read_text())["favorites_only"]
+    view_path(bundle).write_text(json.dumps(state))
+    rows = theme_rows(palettes, dark, state["favorites_only"])
+    visible_ids = [row.split("\t", 1)[0] for row in rows]
+    position = visible_ids.index(original) + 1 if original in visible_ids else 1
+    command = [
+        "fzf", "--sync", "--no-multi", "--layout=reverse", "--border", "--expect=tab",
+        "--track", "--id-nth=1",
+        "--print-query", "--query=" + query, "--delimiter=\t", "--nth=1",
+        f"--bind=start:pos({position})",
+        "--prompt=" + view_prompt(state),
+        "--header=↑↓ 미리보기 · Ctrl+F ★ 추가/해제 · Ctrl+G 전체/★ · Tab Light/Dark · Enter 적용 · Esc 복원\n"
+        "★ 목록이 비어 있으면 Ctrl+G로 전체 목록 보기",
+        "--color=bg:-1,fg:-1,bg+:-1,fg+:-1,hl:4,hl+:4,pointer:4,marker:2,header:8,info:8,prompt:4,border:8",
+        "--preview-window=right:42%:wrap", "--preview=" + f"{script} _swatches {data} {{1}}",
+        "--bind=" + f"focus:execute-silent({script} _preview {data} {{1}})",
+        "--bind=" + f"ctrl-f:reload-sync({script} _rows {data} toggle {{1}})",
+        "--bind=" + f"ctrl-g:reload-sync({script} _rows {data} filter)"
+        + f"+transform-prompt({script} _prompt {data})",
+    ]
+    # A user's fzf defaults must not introduce auto-accept or bypass rollback.
+    environment = dict(os.environ, FZF_DEFAULT_OPTS="", FZF_DEFAULT_OPTS_FILE="")
+    process = subprocess.run(command, input="".join(row + "\n" for row in rows), text=True,
+                             stdout=subprocess.PIPE, env=environment)
+    if process.returncode in (1, 130):
+        return None, "", query
+    if process.returncode:
+        raise RuntimeError(f"fzf 종료 코드: {process.returncode}")
+    lines = process.stdout.splitlines()
+    query = lines[0] if lines else ""
+    key = lines[1] if len(lines) > 1 else ""
+    selected = lines[2].split("\t", 1)[0] if len(lines) > 2 else None
+    if selected is not None and selected not in ids:
+        raise RuntimeError("선택한 테마가 현재 그룹에 없습니다")
+    return selected, key, query
+
+
+def browse(session, palettes, original, initial=None):
+    # No theme configured: start with light without previewing a dark candidate.
+    dark = palettes.get(original, {}).get("dark", False)
+    if initial in ("light", "dark"):
+        dark = initial == "dark"
+    committed = False
+    favorites_only = False
+    cursor = original
+    query = ""
+    with tempfile.TemporaryDirectory(prefix="tuios-theme-picker-") as directory:
+        bundle = Path(directory) / "palettes.json"
+        bundle.write_text(json.dumps({"session": session, "palettes": palettes}))
+        try:
+            while True:
+                selected, key, query = choose(
+                    palettes, cursor, dark, bundle, favorites_only, query)
+                if selected is not None:
+                    cursor = selected
+                if key == "tab":
+                    dark = not dark
+                    query = ""
+                    continue
+                if selected is None:
+                    return
+                commit_theme(session, selected)
+                committed = True
+                return
+        finally:
+            if not committed:
+                apply_theme(session, original)
+
+
+def main(args):
+    if args and args[0] == "_rows":
+        refresh_rows(args[1], args[2], args[3] if len(args) > 3 else "")
+        return
+    if args and args[0] == "_prompt":
+        print(view_prompt(json.loads(view_path(args[1]).read_text())))
+        return
+    if args and args[0] in ("_preview", "_swatches"):
+        data = json.loads(Path(args[1]).read_text())
+        theme = args[2] if len(args) > 2 else ""
+        if theme not in data["palettes"]:
+            return
+        if args[0] == "_preview":
+            apply_theme(data["session"], theme)
+        else:
+            swatches(data["palettes"][theme])
+        return
+    if args and args[0] in ("--help", "-h"):
+        print("tuios-theme-picker [light|dark] · Ctrl+F 즐겨찾기 추가/해제 · Ctrl+G 전체/즐겨찾기 · Tab 그룹 전환 · Esc 원래 테마 복원")
+        return
+    session = os.environ.get("TUIOS_SESSION")
+    if not session:
+        raise RuntimeError("TUIOS 안에서 실행하세요")
+    if args and args[0] not in ("light", "dark"):
+        raise RuntimeError("인자는 light 또는 dark입니다")
+    original = original_theme(session)
+    # Native popup focus can leave the host in window management mode.
+    rpc("run-command", {"session": session, "command": "TerminalMode"})
+    browse(session, load_palettes(), original, args[0] if args else None)
+
+
+if __name__ == "__main__":
+    try:
+        main(sys.argv[1:])
+    except (RuntimeError, OSError, ValueError, subprocess.CalledProcessError) as error:
+        print("tuios-theme-picker:", error, file=sys.stderr)
+        sys.exit(1)

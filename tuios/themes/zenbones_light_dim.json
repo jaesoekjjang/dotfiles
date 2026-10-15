@@ -1,0 +1,23 @@
+{
+  "cursor": "#2c363c",
+  "display_name": "Zenbones Light Dim",
+  "bg": "#e8e4e3",
+  "fg": "#2c363c",
+  "black": "#f0edec",
+  "red": "#a8334c",
+  "green": "#4f6c31",
+  "yellow": "#944927",
+  "blue": "#286486",
+  "purple": "#88507d",
+  "cyan": "#3b8992",
+  "white": "#2c363c",
+  "id": "zenbones_light_dim",
+  "bright_red": "#94253e",
+  "bright_green": "#3f5a22",
+  "bright_yellow": "#803d1c",
+  "bright_blue": "#1d5573",
+  "bright_purple": "#7b3b70",
+  "bright_cyan": "#2b747c",
+  "bright_white": "#4f5e68",
+  "bright_black": "#cfc1ba"
+}

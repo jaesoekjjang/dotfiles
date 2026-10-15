@@ -1,0 +1,23 @@
+{
+  "id": "duskfox",
+  "display_name": "Duskfox",
+  "bg": "#232136",
+  "fg": "#e0def4",
+  "cursor": "#cdcbe0",
+  "black": "#393552",
+  "bright_black": "#47407d",
+  "red": "#eb6f92",
+  "bright_red": "#f083a2",
+  "green": "#a3be8c",
+  "bright_green": "#b1d196",
+  "yellow": "#f6c177",
+  "bright_yellow": "#f9cb8c",
+  "blue": "#569fba",
+  "bright_blue": "#65b1cd",
+  "purple": "#c4a7e7",
+  "bright_purple": "#ccb1ed",
+  "cyan": "#9ccfd8",
+  "bright_cyan": "#a6dae3",
+  "white": "#e0def4",
+  "bright_white": "#e2e0f7"
+}

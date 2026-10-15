@@ -17,6 +17,10 @@ background-opacity = 1
 background-blur = 10
 mouse-hide-while-typing = true
 
+# Follow the colors drawn by the active app, including light/dark TUIOS themes.
+cursor-color = cell-foreground
+cursor-text = cell-background
+
 # Font
 font-family = "Hack Nerd Font Mono"
 font-family = "D2CodingLigature Nerd Font"

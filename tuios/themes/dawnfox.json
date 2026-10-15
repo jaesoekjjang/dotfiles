@@ -1,0 +1,23 @@
+{
+  "id": "dawnfox",
+  "display_name": "Dawnfox",
+  "bg": "#faf4ed",
+  "fg": "#575279",
+  "cursor": "#625c87",
+  "black": "#575279",
+  "bright_black": "#5f5695",
+  "red": "#b4637a",
+  "bright_red": "#c26d85",
+  "green": "#618774",
+  "bright_green": "#629f81",
+  "yellow": "#ea9d34",
+  "bright_yellow": "#eea846",
+  "blue": "#286983",
+  "bright_blue": "#2d81a3",
+  "purple": "#907aa9",
+  "bright_purple": "#9a80b9",
+  "cyan": "#56949f",
+  "bright_cyan": "#5ca7b4",
+  "white": "#e5e9f0",
+  "bright_white": "#e6ebf3"
+}

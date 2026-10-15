@@ -1,0 +1,23 @@
+{
+  "id": "carbonfox",
+  "display_name": "Carbonfox",
+  "bg": "#161616",
+  "fg": "#f2f4f8",
+  "cursor": "#b6b8bb",
+  "black": "#282828",
+  "bright_black": "#484848",
+  "red": "#ee5396",
+  "bright_red": "#f16da6",
+  "green": "#25be6a",
+  "bright_green": "#46c880",
+  "yellow": "#08bdba",
+  "bright_yellow": "#2dc7c4",
+  "blue": "#78a9ff",
+  "bright_blue": "#8cb6ff",
+  "purple": "#be95ff",
+  "bright_purple": "#c8a5ff",
+  "cyan": "#33b1ff",
+  "bright_cyan": "#52bdff",
+  "white": "#dfdfe0",
+  "bright_white": "#e4e4e5"
+}

@@ -1,0 +1,23 @@
+{
+  "id": "biscuit_mar_light",
+  "display_name": "Biscuit de Mar Light",
+  "bg": "#fff7eb",
+  "fg": "#483939",
+  "cursor": "#483939",
+  "black": "#fff7eb",
+  "bright_black": "#a38a8a",
+  "red": "#d0796d",
+  "bright_red": "#d0796d",
+  "green": "#878985",
+  "bright_green": "#878985",
+  "yellow": "#938579",
+  "bright_yellow": "#938579",
+  "blue": "#79657a",
+  "bright_blue": "#79657a",
+  "purple": "#794f65",
+  "bright_purple": "#794f65",
+  "cyan": "#877b85",
+  "bright_cyan": "#877b85",
+  "white": "#483939",
+  "bright_white": "#b54851"
+}

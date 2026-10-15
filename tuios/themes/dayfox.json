@@ -1,0 +1,23 @@
+{
+  "id": "dayfox",
+  "display_name": "Dayfox",
+  "bg": "#f6f2ee",
+  "fg": "#3d2b5a",
+  "cursor": "#643f61",
+  "black": "#352c24",
+  "bright_black": "#534c45",
+  "red": "#a5222f",
+  "bright_red": "#b3434e",
+  "green": "#396847",
+  "bright_green": "#577f63",
+  "yellow": "#ac5402",
+  "bright_yellow": "#b86e28",
+  "blue": "#2848a9",
+  "bright_blue": "#4863b6",
+  "purple": "#6e33ce",
+  "bright_purple": "#8452d5",
+  "cyan": "#287980",
+  "bright_cyan": "#488d93",
+  "white": "#f2e9e1",
+  "bright_white": "#f4ece6"
+}

@@ -1,0 +1,23 @@
+{
+  "id": "nordfox",
+  "display_name": "Nordfox",
+  "bg": "#2e3440",
+  "fg": "#cdcecf",
+  "cursor": "#abb1bb",
+  "black": "#3b4252",
+  "bright_black": "#465780",
+  "red": "#bf616a",
+  "bright_red": "#d06f79",
+  "green": "#a3be8c",
+  "bright_green": "#b1d196",
+  "yellow": "#ebcb8b",
+  "bright_yellow": "#f0d399",
+  "blue": "#81a1c1",
+  "bright_blue": "#8cafd2",
+  "purple": "#b48ead",
+  "bright_purple": "#c895bf",
+  "cyan": "#88c0d0",
+  "bright_cyan": "#93ccdc",
+  "white": "#e5e9f0",
+  "bright_white": "#e7ecf4"
+}

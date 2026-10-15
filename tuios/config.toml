@@ -147,7 +147,7 @@ show_cpu = true
 show_ram = true
 # 후보: japanesque / snazzy / pencil_dark / gruvbox_dark_hard
 # 라이트 기본값; 커스텀 테마는 tuios/themes/README.md 참고
-theme = 'everforest_light_medium'
+theme = 'rose_pine_dawn_official'
 shared_borders = false
 border_focused_color = ''
 border_unfocused_color = ''
@@ -228,7 +228,7 @@ leader_key = 'ctrl+b'
 [keybindings.window_management]
 close_window = ['w', 'x']
 copy_selection = ['c']
-focus_sidebar = ['s']
+focus_sidebar = []
 minimize_window = ['m']
 new_session = ['N']
 new_window = ['n']
@@ -374,7 +374,7 @@ prefix_split_vertical = ['|', '\', 'ctrl+v']
 prefix_tape = ['T']
 prefix_toggle_sidebar = ['b']
 prefix_toggle_tiling = ['space']
-prefix_window = ['t']
+prefix_window = []
 prefix_workspace = ['W']
 prefix_workspace_switcher = []
 prev_session = ['(']
@@ -579,7 +579,7 @@ width = '90%'
 height = '90%'
 
 [[keybindings.command]]
-key = 'prefix+ctrl+t'
+key = 'prefix+t'
 type = 'popup'
 command = 'tuios-trial app /bin/zsh'
 description = 'Shell'
@@ -805,3 +805,12 @@ command = 'env TUIOS_PICKER_POPUP=1 tuios-picker close-workspace'
 description = '현재 workspace 종료 (y 확인)'
 width = '84'
 height = '9'
+
+[[keybindings.command]]
+key = 'prefix+ctrl+t'
+name = 'theme-picker'
+type = 'popup'
+command = 'tuios-theme-picker'
+description = 'Light/Dark 테마 선택'
+width = '85%'
+height = '80%'

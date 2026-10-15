@@ -1,0 +1,23 @@
+{
+  "id": "monokai_pro_light_sun",
+  "display_name": "Monokai Pro Light Sun",
+  "bg": "#f8efe7",
+  "fg": "#2c232e",
+  "cursor": "#72696d",
+  "black": "#f8efe7",
+  "red": "#ce4770",
+  "green": "#218871",
+  "yellow": "#b16803",
+  "blue": "#d4572b",
+  "purple": "#6851a2",
+  "cyan": "#2473b6",
+  "white": "#2c232e",
+  "bright_black": "#a59c9c",
+  "bright_red": "#ce4770",
+  "bright_green": "#218871",
+  "bright_yellow": "#b16803",
+  "bright_blue": "#d4572b",
+  "bright_purple": "#6851a2",
+  "bright_cyan": "#2473b6",
+  "bright_white": "#2c232e"
+}

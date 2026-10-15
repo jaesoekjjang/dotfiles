@@ -1,0 +1,23 @@
+{
+  "id": "monokai_pro_light",
+  "display_name": "Monokai Pro Light",
+  "bg": "#faf4f2",
+  "fg": "#29242a",
+  "cursor": "#706b6e",
+  "black": "#faf4f2",
+  "red": "#e14775",
+  "green": "#269d69",
+  "yellow": "#cc7a0a",
+  "blue": "#e16032",
+  "purple": "#7058be",
+  "cyan": "#1c8ca8",
+  "white": "#29242a",
+  "bright_black": "#a59fa0",
+  "bright_red": "#e14775",
+  "bright_green": "#269d69",
+  "bright_yellow": "#cc7a0a",
+  "bright_blue": "#e16032",
+  "bright_purple": "#7058be",
+  "bright_cyan": "#1c8ca8",
+  "bright_white": "#29242a"
+}

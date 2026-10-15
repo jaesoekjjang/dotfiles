@@ -1,0 +1,23 @@
+{
+  "id": "kami_light",
+  "display_name": "Kami Reader Light",
+  "bg": "#f5f4ed",
+  "fg": "#141413",
+  "cursor": "#1B365D",
+  "black": "#3d3d3a",
+  "red": "#8c2d2d",
+  "green": "#526e36",
+  "yellow": "#6b4a1f",
+  "blue": "#1B365D",
+  "purple": "#1B365D",
+  "cyan": "#504e49",
+  "white": "#f0eee4",
+  "bright_black": "#6b6a64",
+  "bright_red": "#8c2d2d",
+  "bright_green": "#526e36",
+  "bright_yellow": "#6b4a1f",
+  "bright_blue": "#2a4a7a",
+  "bright_purple": "#1B365D",
+  "bright_cyan": "#4a463e",
+  "bright_white": "#141413"
+}

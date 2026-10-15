@@ -1,0 +1,23 @@
+{
+  "id": "rose_pine_dawn_official",
+  "display_name": "Rose Pine Dawn Official",
+  "bg": "#faf4ed",
+  "fg": "#575279",
+  "cursor": "#575279",
+  "black": "#f2e9e1",
+  "bright_black": "#9893a5",
+  "red": "#b4637a",
+  "bright_red": "#b4637a",
+  "green": "#286983",
+  "bright_green": "#286983",
+  "yellow": "#ea9d34",
+  "bright_yellow": "#ea9d34",
+  "blue": "#56949f",
+  "bright_blue": "#56949f",
+  "purple": "#907aa9",
+  "bright_purple": "#907aa9",
+  "cyan": "#d7827e",
+  "bright_cyan": "#d7827e",
+  "white": "#575279",
+  "bright_white": "#575279"
+}

@@ -1,0 +1,23 @@
+{
+  "id": "nightfox",
+  "display_name": "Nightfox",
+  "bg": "#192330",
+  "fg": "#cdcecf",
+  "cursor": "#aeafb0",
+  "black": "#393b44",
+  "bright_black": "#575860",
+  "red": "#c94f6d",
+  "bright_red": "#d16983",
+  "green": "#81b29a",
+  "bright_green": "#8ebaa4",
+  "yellow": "#dbc074",
+  "bright_yellow": "#e0c989",
+  "blue": "#719cd6",
+  "bright_blue": "#86abdc",
+  "purple": "#9d79d6",
+  "bright_purple": "#baa1e2",
+  "cyan": "#63cdcf",
+  "bright_cyan": "#7ad5d6",
+  "white": "#dfdfe0",
+  "bright_white": "#e4e4e5"
+}

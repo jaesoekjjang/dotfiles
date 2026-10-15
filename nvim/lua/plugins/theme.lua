@@ -1,4 +1,18 @@
 return {
+	{ "zenbones-theme/zenbones.nvim", lazy = true, dependencies = { "rktjmp/lush.nvim" } },
+	{ "sainnhe/everforest", lazy = true },
+	{
+		"loctvl842/monokai-pro.nvim",
+		lazy = true,
+		main = "monokai-pro",
+		opts = { filter = "light", transparent_background = false },
+	},
+	{
+		"rose-pine/neovim",
+		name = "rose-pine",
+		lazy = true,
+		opts = { styles = { transparency = false } },
+	},
 	-- {
 	-- 	-- {
 	-- 	-- 	"sainnhe/gruvbox-material",
@@ -41,6 +55,7 @@ return {
 		"rebelot/kanagawa.nvim",
 		lazy = false,
 		priority = 1000,
+		dependencies = { "rose-pine", "monokai-pro.nvim", "everforest", "zenbones.nvim" },
 		config = function()
 			require("kanagawa").setup({
 				compile = false, -- enable compiling the colorscheme
@@ -69,14 +84,14 @@ return {
 				overrides = function(colors) -- add/modify highlights
 					return {}
 				end,
-				theme = "wave", -- Load "wave" theme
+				theme = "dragon", -- Fallback when the TUIOS theme has no Neovim mapping.
 				background = { -- map the value of 'background' option to a theme
-					dark = "wave", -- try "dragon" !
+					dark = "dragon",
 					light = "lotus",
 				},
 			})
 
-			vim.cmd("colorscheme kanagawa")
+			require("config.theme").setup()
 		end,
 	},
 	{
@@ -85,7 +100,7 @@ return {
 		config = function()
 			require("lualine").setup({
 				options = {
-					theme = "kanagawa",
+					theme = "auto",
 				},
 				sections = {
 					lualine_a = { "mode" },

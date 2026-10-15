@@ -1,0 +1,23 @@
+{
+  "id": "kanso_pearl",
+  "display_name": "Kanso Pearl",
+  "bg": "#f2f1ef",
+  "fg": "#22262d",
+  "cursor": "#22262d",
+  "black": "#22262d",
+  "bright_black": "#6d6d69",
+  "red": "#c84053",
+  "bright_red": "#d7474b",
+  "green": "#6f894e",
+  "bright_green": "#6e915f",
+  "yellow": "#77713f",
+  "bright_yellow": "#836f4a",
+  "blue": "#4d699b",
+  "bright_blue": "#6693bf",
+  "purple": "#b35b79",
+  "bright_purple": "#624c83",
+  "cyan": "#597b75",
+  "bright_cyan": "#5e857a",
+  "white": "#22262d",
+  "bright_white": "#43436c"
+}

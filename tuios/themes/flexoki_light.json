@@ -1,0 +1,23 @@
+{
+  "id": "flexoki_light",
+  "display_name": "Flexoki Light",
+  "bg": "#FFFCF0",
+  "fg": "#100F0F",
+  "cursor": "#100F0F",
+  "black": "#100F0F",
+  "blue": "#4385BE",
+  "cyan": "#3AA99F",
+  "green": "#879A39",
+  "purple": "#CE5D97",
+  "red": "#D14D41",
+  "white": "#FFFCF0",
+  "yellow": "#D0A215",
+  "bright_black": "#100F0F",
+  "bright_blue": "#4385BE",
+  "bright_cyan": "#3AA99F",
+  "bright_green": "#879A39",
+  "bright_purple": "#CE5D97",
+  "bright_red": "#D14D41",
+  "bright_white": "#FFFCF0",
+  "bright_yellow": "#D0A215"
+}
