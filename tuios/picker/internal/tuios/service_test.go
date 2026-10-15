@@ -260,7 +260,7 @@ func TestChildNavigationSelectsDestinationBeforeSessionFocus(t *testing.T) {
 	if err != nil || !exit.Exit {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(h.events, []string{"tuios select-workspace 1 -s destination --json", `workspace.focus {"workspace_id":"wbb"}`}) {
+	if !reflect.DeepEqual(h.events, []string{"tuios select-workspace 1 -s destination --json", "tuios list-clients --json", "tuios switch-session destination --client c1 --json"}) {
 		t.Fatal(h.events)
 	}
 }
@@ -509,7 +509,7 @@ func TestPaneNavigationSelectsWorkspaceAndPaneBeforeSession(t *testing.T) {
 	if err != nil || !result.Exit {
 		t.Fatal(err)
 	}
-	want := []string{"tuios select-workspace 2 -s destination --json", "tuios focus-window editor -s destination --json", `workspace.focus {"workspace_id":"wbb"}`}
+	want := []string{"tuios select-workspace 2 -s destination --json", "tuios focus-window editor -s destination --json", "tuios list-clients --json", "tuios switch-session destination --client c1 --json"}
 	if !reflect.DeepEqual(h.events, want) {
 		t.Fatal(h.events)
 	}

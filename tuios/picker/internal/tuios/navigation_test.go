@@ -2,8 +2,45 @@ package tuios
 
 import (
 	"fmt"
+	"reflect"
+	"strings"
 	"testing"
 )
+
+func TestSessionNavigationMovesSourceClientWithDestinationAlreadyAttached(t *testing.T) {
+	h := fixture(t)
+	h.clients = `[{"client_id":"other-window","pid":20,"session":"destination"},{"client_id":"c1","pid":10,"session":"source"}]`
+	result, err := h.s.Act("enter", Row{Kind: "session", Session: "destination", SessionID: "wbb"}, "")
+	if err != nil || !result.Exit {
+		t.Fatalf("%+v %v", result, err)
+	}
+	want := []string{"tuios list-clients --json", "tuios switch-session destination --client c1 --json"}
+	if !reflect.DeepEqual(h.events, want) {
+		t.Fatalf("wrong client or target: %v", h.events)
+	}
+}
+
+func TestSessionNavigationDoesNotSwitchCurrentSession(t *testing.T) {
+	h := fixture(t)
+	result, err := h.s.Act("enter", Row{Kind: "session", Session: "source", SessionID: "waa"}, "")
+	if err != nil || !result.Exit || len(h.events) != 0 {
+		t.Fatalf("%+v %v %v", result, err, h.events)
+	}
+}
+
+func TestSessionNavigationRefusesMissingOrAmbiguousSourceClients(t *testing.T) {
+	for _, clients := range []string{
+		`[{"client_id":"other-window","session":"destination"}]`,
+		`[{"client_id":"c1","session":"source"},{"client_id":"c2","session":"source"}]`,
+	} {
+		h := fixture(t)
+		h.clients = clients
+		_, err := h.s.Act("enter", Row{Kind: "session", Session: "destination"}, "")
+		if err == nil || !strings.Contains(err.Error(), "현재 세션에 연결된 창") || has(h.events, "switch-session") || has(h.events, "workspace.focus") {
+			t.Fatalf("must refuse guessing a client: %v %v", err, h.events)
+		}
+	}
+}
 
 func TestCycleSkipsEmptyWorkspacesAndWraps(t *testing.T) {
 	for _, tc := range []struct {

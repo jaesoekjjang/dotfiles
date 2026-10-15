@@ -19,6 +19,8 @@ tuios-picker workspaces
 ```
 
 `close-session`, `close-workspace`, `record-session`, `last-session`, `next-workspace`, `prev-workspace`도 유지한다.
+
+세션 이동은 picker를 연 세션에 연결된 client를 찾아 `switch-session --client`로 전환한다. 목적지가 다른 Ghostty 창에 이미 열려 있어도 현재 창이 이동한다. 같은 출발 세션을 여러 창에서 보고 있으면 어떤 창인지 추측하지 않고 오류를 표시한다. 현재 세션을 선택하면 전환하지 않고 picker만 닫는다.
 Python picker와 fzf 내부 helper는 제거했다. 프로젝트 선택 등 다른 도구는 계속 fzf를 사용한다.
 
 ## 생성

@@ -294,7 +294,7 @@ func (s *Service) Act(action string, row Row, name string) (ActionResult, error)
 				return ActionResult{}, err
 			}
 			if row.Session != s.Target {
-				return ActionResult{Exit: true}, s.call("workspace.focus", map[string]any{"workspace_id": row.SessionID}, nil)
+				return ActionResult{Exit: true}, s.focusSession(row.Session)
 			}
 			return ActionResult{Exit: true}, nil
 		}
@@ -306,7 +306,7 @@ func (s *Service) Act(action string, row Row, name string) (ActionResult, error)
 				return ActionResult{Exit: true}, nil
 			}
 		}
-		return ActionResult{Exit: true}, s.call("workspace.focus", map[string]any{"workspace_id": row.SessionID}, nil)
+		return ActionResult{Exit: true}, s.focusSession(row.Session)
 	case "rename":
 		if strings.TrimSpace(name) == "" {
 			return ActionResult{}, nil
@@ -378,6 +378,32 @@ func (s *Service) detach(args ...string) error {
 		return err
 	}
 	return cmd.Process.Release()
+}
+
+// herdr workspace.focus is a no-op when the destination is already shown by
+// another client. Move the client showing the picker's source session instead.
+// Refuse ambiguous sources rather than moving an arbitrary Ghostty window.
+func (s *Service) focusSession(destination string) error {
+	if destination == "" {
+		return fmt.Errorf("이동할 session이 없습니다")
+	}
+	if destination == s.Target {
+		return nil
+	}
+	var clients []client
+	if err := s.command(&clients, "list-clients"); err != nil {
+		return err
+	}
+	var matches []client
+	for _, c := range clients {
+		if c.Session == s.Target {
+			matches = append(matches, c)
+		}
+	}
+	if len(matches) != 1 {
+		return fmt.Errorf("세션 이동에는 현재 세션에 연결된 창이 하나여야 합니다 (현재 %d개)", len(matches))
+	}
+	return s.command(nil, "switch-session", destination, "--client", matches[0].ID)
 }
 
 func (s *Service) FinishClose(kind, selected, current, target string) error {
