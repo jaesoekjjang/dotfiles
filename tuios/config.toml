@@ -114,6 +114,7 @@
 # ============================================================================
 
 [appearance]
+prefix_repeat_time = 0
 zoom_animation = false
 zoom_borderless = false
 dock_pill_caps = false
