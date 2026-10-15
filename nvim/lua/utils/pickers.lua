@@ -61,7 +61,7 @@ function M.switch_worktree(path)
 			vim.cmd.edit(vim.fn.fnameescape(target))
 		end
 	end
-	-- fff also follows DirChanged; the next search uses the selected worktree.
+	-- 다음 검색은 새 worktree의 파일에서 프로젝트 범위를 구한다.
 	vim.notify("Worktree: " .. path)
 end
 

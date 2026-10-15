@@ -16,13 +16,18 @@ return {
 			enabled = true,
 			ui_select = true,
 			layout = { preset = "ivy", layout = { height = 0.5 } },
+			toggles = {
+				hidden = "Hidden",
+				ignored = "Ignored",
+				regex = { icon = "Regex", value = true },
+			},
 			actions = {
 				copy_path = function(_, item)
 					local value, kind
 					if item and item.commit then
 						value, kind = item.commit, "Hash"
 					elseif item and item.file then
-						value, kind = vim.fn.fnamemodify(item.file, ":."), "경로"
+						value, kind = vim.fn.fnamemodify(Snacks.picker.util.path(item), ":."), "경로"
 					end
 					if value then
 						vim.fn.setreg("+", value)
@@ -31,10 +36,31 @@ return {
 				end,
 			},
 			win = {
-				input = { keys = { ["<C-o>"] = { "copy_path", mode = { "n", "i" } } } },
-				list = { keys = { ["<C-o>"] = "copy_path" } },
+				input = {
+					keys = {
+						["<C-o>"] = { "copy_path", mode = { "n", "i" } },
+						["<C-h>"] = { "toggle_hidden", mode = { "n", "i" } },
+						["<C-e>"] = { "toggle_ignored", mode = { "n", "i" } },
+						["<C-x>"] = { "toggle_regex", mode = { "n", "i" } },
+						["<F2>"] = { "toggle_preview", mode = { "n", "i" } },
+						["<F3>"] = { "toggle_maximize", mode = { "n", "i" } },
+					},
+				},
+				list = {
+					keys = {
+						["<C-o>"] = "copy_path",
+						["<C-h>"] = "toggle_hidden",
+						["<C-e>"] = "toggle_ignored",
+						["<C-x>"] = "toggle_regex",
+						["<F2>"] = "toggle_preview",
+						["<F3>"] = "toggle_maximize",
+					},
+				},
 			},
 			sources = {
+				files = { hidden = true, ignored = false },
+				grep = { hidden = true, ignored = false, regex = true },
+				grep_word = { hidden = true, ignored = false, regex = false },
 				lsp_symbols = { filter = { default = true, lua = true } },
 				lsp_workspace_symbols = { filter = { default = true, lua = true } },
 				buffers = {
@@ -66,13 +92,17 @@ return {
 			end,
 			desc = "AI workspace menu",
 		},
-		{
-			"<leader>fG",
-			function()
-				Snacks.picker.grep()
-			end,
-			desc = "Search with ripgrep options",
-		},
+		{ "<leader>ff", function() require("utils.search").files() end, desc = "Find files (project)" },
+		{ "<leader>fF", function() require("utils.search").files(true) end, desc = "Find files (file folder)" },
+		{ "<leader>fg", function() require("utils.search").grep() end, mode = { "n", "x" }, desc = "Grep (project)" },
+		{ "<leader>fG", function() require("utils.search").grep(true) end, mode = { "n", "x" }, desc = "Grep (file folder)" },
+		{ "<leader>fw", function() require("utils.search").grep(false, true) end, desc = "Grep word (project)" },
+		{ "<leader>fr", function() Snacks.picker.resume() end, desc = "Resume last picker" },
+		{ "<leader><space>", function() require("utils.search").smart() end, desc = "Smart files (project)" },
+		{ "<leader>fl", function() Snacks.picker.lines() end, desc = "Fuzzy search buffer lines" },
+		{ "<leader>fB", function() require("utils.search").grep_buffers() end, desc = "Grep open files" },
+		{ "<leader>fk", function() Snacks.picker.keymaps() end, desc = "Find keymaps" },
+		{ "<leader>fp", function() Snacks.picker.pickers() end, desc = "Find picker" },
 		{
 			"<leader>fb",
 			function()
@@ -97,10 +127,11 @@ return {
 		{
 			"<leader>fo",
 			function()
-				Snacks.picker.recent()
+				require("utils.search").recent()
 			end,
-			desc = "Recent files",
+			desc = "Recent files (project)",
 		},
+		{ "<leader>fO", function() require("utils.search").recent(true) end, desc = "Recent files (all projects)" },
 		{
 			"<leader>sd",
 			function()
