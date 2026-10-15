@@ -787,7 +787,7 @@ left = ["mode", "custom/current_session", "workspaces"]
 [dock.custom]
 [dock.custom.current_session]
 command = '''tuios session-info -s "$TUIOS_SESSION" --json | jq -er 'select(.success == true) | ((.display_name | select(type == "string" and length > 0)) // .session_name)''''
-refresh = '2s'
+refresh = 'event:after-attach,after-focus-change'
 max-width = 48
 
 [[keybindings.command]]
