@@ -743,7 +743,8 @@ frame = 'window'
 background = 'auto'
 controls = 'auto'
 title_format = '{title}'
-font_family = 'JetBrains Mono, monospace'
+# SVG/HTML can fall back to D2Coding for Hangul; PNG uses only the first available family.
+font_family = 'Hack Nerd Font Mono, D2CodingLigature Nerd Font, monospace'
 font_file = ''
 cursor = false
 

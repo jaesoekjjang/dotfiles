@@ -24,10 +24,17 @@ cursor-color = cell-foreground
 cursor-text = cell-background
 
 # Font
-font-family = "Hack Nerd Font Mono"
-font-family = "D2CodingLigature Nerd Font"
+# Iosevka Term Extended: official IosevkaTerm Extended TTFs (v34.9.0).
+font-family = "Iosevka Term Extended"
+font-family = "D2CodingLigature Nerd Font Mono"
+# Hangul only; Latin and Nerd icons keep their existing fonts.
+# Change only the font name after the last "=" on the line below:
+# NanumGothicCoding | D2CodingLigature Nerd Font
+# After changing, reload config and open a new window.
+# font-codepoint-map = U+1100-U+11FF,U+3130-U+318F,U+A960-U+A97F,U+AC00-U+D7AF,U+D7B0-U+D7FF,U+FFA0-U+FFDC="D2CodingLigature Nerd Font"
 font-thicken = true
-font-size = 17
+font-thicken-strength = 128
+font-size = 18
 
 # Clipboard
 clipboard-read = allow
