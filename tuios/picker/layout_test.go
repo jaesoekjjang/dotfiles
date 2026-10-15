@@ -13,7 +13,7 @@ func TestSplitPreviewKeepsGeometryAndClipsContent(t *testing.T) {
 		{ID: "b", Title: "server", X: 70, Y: 5, Width: 40, Height: 20, Screen: "RIGHT TOP"},
 		{ID: "c", Title: "logs", X: 70, Y: 25, Width: 40, Height: 20, Screen: "RIGHT BOTTOM"},
 	}
-	raw := splitPreview(panes, "a", 100, 20)
+	raw := newPickerStyles(true, nil).splitPreview(panes, "a", 100, 20)
 	lines := strings.Split(ansi.Strip(raw), "\n")
 	if len(lines) != 20 {
 		t.Fatal(len(lines))
@@ -30,7 +30,7 @@ func TestSplitPreviewKeepsGeometryAndClipsContent(t *testing.T) {
 		}
 	}
 	for _, size := range [][2]int{{40, 8}, {9, 3}, {1, 1}} {
-		view := splitPreview(panes, "a", size[0], size[1])
+		view := newPickerStyles(true, nil).splitPreview(panes, "a", size[0], size[1])
 		for _, line := range strings.Split(view, "\n") {
 			if ansi.StringWidth(line) != size[0] {
 				t.Fatal(size, line)
@@ -43,7 +43,7 @@ func TestSplitPreviewSanitizesControlsAndKeepsTilesIndependent(t *testing.T) {
 		{ID: "a", Title: "a", Width: 20, Height: 10, Screen: "\x1b]52;c;payload\a\x1b[2J\x1b[31mRED"},
 		{ID: "b", Title: "b", X: 20, Width: 20, Height: 10, Screen: "OTHER"},
 	}
-	view := splitPreview(panes, "a", 40, 10)
+	view := newPickerStyles(true, nil).splitPreview(panes, "a", 40, 10)
 	if strings.Contains(view, "payload") || strings.Contains(view, "\x1b[2J") || !strings.Contains(view, "RED") || !strings.Contains(view, "OTHER") {
 		t.Fatal(view)
 	}

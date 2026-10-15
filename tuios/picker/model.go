@@ -39,6 +39,7 @@ type actionMsg struct {
 }
 
 type model struct {
+	styles                                 pickerStyles
 	layoutRefreshing                       bool
 	searchAnchor                           string
 	agentRefreshing                        bool
@@ -78,12 +79,13 @@ func newInput() textinput.Model {
 	i.SetVirtualCursor(false)
 	i.Prompt = "찾기 › "
 	i.Placeholder = "이름 검색"
+	palette := newPickerStyles(true, nil)
 	styles := textinput.DefaultDarkStyles()
-	styles.Focused.Text = normal
-	styles.Focused.Prompt = bright
-	styles.Focused.Placeholder = muted
+	styles.Focused.Text = palette.normal
+	styles.Focused.Prompt = palette.bright
+	styles.Focused.Placeholder = palette.muted
 	styles.Blurred = styles.Focused
-	styles.Cursor.Color = cyan
+	styles.Cursor.Color = palette.accent
 	i.SetStyles(styles)
 	return i
 }
@@ -99,6 +101,7 @@ func newModel(service controller, mode string) *model {
 		m.showPreview = false
 		m.search.Placeholder = "보낼 workspace 검색"
 	}
+	m.styles = newPickerStyles(true, nil)
 	m.viewport.SoftWrap = false
 	m.viewport.FillHeight = true
 	m.search.Focus()
@@ -107,9 +110,9 @@ func newModel(service controller, mode string) *model {
 }
 func (m *model) Init() tea.Cmd {
 	if m.standalone {
-		return nil
+		return tea.RequestBackgroundColor
 	}
-	return tea.Batch(m.search.Focus(), m.reload(), nextAgentTick())
+	return tea.Batch(tea.RequestBackgroundColor, m.search.Focus(), m.reload(), nextAgentTick())
 }
 func (m *model) reload() tea.Cmd {
 	m.loading = true
@@ -275,6 +278,11 @@ func (m *model) openModal(kind string, row tuios.Row) tea.Cmd {
 func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	defer func() { m.resize(); m.keepVisible() }()
 	switch msg := message.(type) {
+	case tea.BackgroundColorMsg:
+		if msg.Color != nil {
+			m.applyPickerStyles(newPickerStyles(msg.IsDark(), msg.Color))
+		}
+		return m, nil
 	case agentTick:
 		if m.loading || m.busy || m.modal != "" || m.agentRefreshing {
 			return m, nextAgentTick()

@@ -8,7 +8,7 @@ import (
 
 // Scale window bounds, not terminal content. Crop each captured screen into
 // its rectangle; no resize event is sent to any running terminal application.
-func splitPreview(panes []tuios.PreviewPane, active string, width, height int) string {
+func (s pickerStyles) splitPreview(panes []tuios.PreviewPane, active string, width, height int) string {
 	if width < 1 || height < 1 || len(panes) == 0 {
 		return ""
 	}
@@ -34,7 +34,7 @@ func splitPreview(panes []tuios.PreviewPane, active string, width, height int) s
 		if x < 0 || y < 0 || x >= width || y >= height {
 			continue
 		}
-		lines := previewTile(p, p.ID == active, w, h)
+		lines := s.previewTile(p, p.ID == active, w, h)
 		for j, line := range lines {
 			if y+j >= height {
 				break
@@ -44,10 +44,10 @@ func splitPreview(panes []tuios.PreviewPane, active string, width, height int) s
 	}
 	return strings.Join(canvas, "\n")
 }
-func previewTile(p tuios.PreviewPane, active bool, width, height int) []string {
-	style := border
+func (s pickerStyles) previewTile(p tuios.PreviewPane, active bool, width, height int) []string {
+	style := s.border
 	if active {
-		style = pointer
+		style = s.pointer
 	}
 	state := ""
 	switch p.AgentState {

@@ -15,17 +15,7 @@ import (
 	"github.com/junegunn/fzf/src/util"
 )
 
-var (
-	cyan    = lipgloss.Color("#7dcfff")
-	normal  = lipgloss.NewStyle().Foreground(lipgloss.Color("#caced8"))
-	bright  = lipgloss.NewStyle().Foreground(lipgloss.Color("#dcdfe6")).Bold(true)
-	muted   = lipgloss.NewStyle().Foreground(lipgloss.Color("#a7adb7"))
-	border  = lipgloss.NewStyle().Foreground(lipgloss.Color("#5c626c"))
-	green   = lipgloss.NewStyle().Foreground(lipgloss.Color("#9ece6a"))
-	pointer = lipgloss.NewStyle().Foreground(cyan)
-	amber   = lipgloss.NewStyle().Foreground(lipgloss.Color("#e0af68"))
-	sgr     = regexp.MustCompile("\x1b\\[[0-9;:]*m")
-)
+var sgr = regexp.MustCompile("\x1b\\[[0-9;:]*m")
 
 // A captured terminal is data, not instructions to our terminal. Preserve SGR
 // styling only; notably OSC titles/links and cursor movement cannot escape the
@@ -61,12 +51,12 @@ func pair(left, right string, width int) string {
 	return left + strings.Repeat(" ", max(0, width-ansi.StringWidth(left)-ansi.StringWidth(right))) + right
 }
 
-func panel(title, body string, width, height int) string {
+func (m *model) panel(title, body string, width, height int) string {
 	width = max(4, width)
 	height = max(2, height)
 	inner := width - 4
 	title = fit(title, max(0, width-6))
-	top := border.Render("╭─ ") + muted.Bold(true).Render(title) + border.Render(" "+strings.Repeat("─", max(0, width-5-ansi.StringWidth(title)))+"╮")
+	top := m.styles.border.Render("╭─ ") + m.styles.muted.Bold(true).Render(title) + m.styles.border.Render(" "+strings.Repeat("─", max(0, width-5-ansi.StringWidth(title)))+"╮")
 	lines := strings.Split(body, "\n")
 	out := []string{top}
 	for i := 0; i < height-2; i++ {
@@ -74,9 +64,9 @@ func panel(title, body string, width, height int) string {
 		if i < len(lines) {
 			line = lines[i]
 		}
-		out = append(out, border.Render("│ ")+pad(line, inner)+border.Render(" │"))
+		out = append(out, m.styles.border.Render("│ ")+pad(line, inner)+m.styles.border.Render(" │"))
 	}
-	out = append(out, border.Render("╰"+strings.Repeat("─", width-2)+"╯"))
+	out = append(out, m.styles.border.Render("╰"+strings.Repeat("─", width-2)+"╯"))
 	return strings.Join(out, "\n")
 }
 
@@ -173,7 +163,7 @@ func (m *model) resize() {
 	m.viewport.SetHeight(max(1, d.rightH-7))
 }
 
-func highlighted(text, query string, style lipgloss.Style, selected bool) string {
+func (m *model) highlighted(text, query string, style lipgloss.Style, selected bool) string {
 	positions := map[int]bool{}
 	chars := util.ToChars([]byte(text))
 	for _, term := range strings.Fields(query) {
@@ -196,9 +186,9 @@ func highlighted(text, query string, style lipgloss.Style, selected bool) string
 	for i, r := range []rune(text) {
 		s := style
 		if positions[i] {
-			s = amber
+			s = m.styles.amber
 			if selected {
-				s = s.Background(lipgloss.Color("#383c45"))
+				s = s.Background(m.styles.selection)
 			}
 		}
 		out.WriteString(s.Render(string(r)))
@@ -207,12 +197,12 @@ func highlighted(text, query string, style lipgloss.Style, selected bool) string
 }
 
 func (m *model) rowView(row tuios.Row, width int, selected bool) string {
-	base, secondary, status, marker := normal, muted, green, pointer
+	base, secondary, status, marker := m.styles.normal, m.styles.muted, m.styles.green, m.styles.pointer
 	if row.Parent == "" {
-		base = bright
+		base = m.styles.bright
 	}
 	if selected {
-		bg := lipgloss.Color("#383c45")
+		bg := m.styles.selection
 		base = base.Background(bg)
 		secondary = secondary.Background(bg)
 		status = status.Background(bg)
@@ -262,14 +252,14 @@ func (m *model) rowView(row tuios.Row, width int, selected bool) string {
 		badge = ""
 	}
 	if row.Agents.Done > 0 {
-		status = green
+		status = m.styles.green
 	} else if row.Agents.NeedsInput > 0 || row.Agents.Errored > 0 {
-		status = amber
+		status = m.styles.amber
 	} else if row.Agents.Working > 0 {
-		status = pointer
+		status = m.styles.pointer
 	}
 	if selected {
-		status = status.Background(lipgloss.Color("#383c45"))
+		status = status.Background(m.styles.selection)
 	}
 	if row.Current && !hideSummary {
 		if badge != "" {
@@ -287,7 +277,7 @@ func (m *model) rowView(row tuios.Row, width int, selected bool) string {
 		leftWidth = max(0, leftWidth-ansi.StringWidth(badge)-2)
 	}
 	label = fit(label, max(0, leftWidth-ansi.StringWidth(prefix)-ansi.StringWidth(command)))
-	left := secondary.Render(prefix) + highlighted(label, m.search.Value(), base, selected) + secondary.Render(command)
+	left := secondary.Render(prefix) + m.highlighted(label, m.search.Value(), base, selected) + secondary.Render(command)
 	left = pad(left, leftWidth)
 	if badge != "" {
 		left += "  " + status.Render(badge)
@@ -298,7 +288,7 @@ func (m *model) rowView(row tuios.Row, width int, selected bool) string {
 	}
 	line = pad(line, width)
 	if selected {
-		return lipgloss.NewStyle().Background(lipgloss.Color("#383c45")).Render(line)
+		return lipgloss.NewStyle().Background(m.styles.selection).Render(line)
 	}
 	return line
 }
@@ -312,45 +302,45 @@ func (m *model) listView(width, height int) string {
 		}
 		lines = []string{"", input, ""}
 		if m.projectLoading && m.projectOpen {
-			lines = append(lines, muted.Render("프로젝트 불러오는 중…"))
+			lines = append(lines, m.styles.muted.Render("프로젝트 불러오는 중…"))
 		} else if len(m.folderChoices) > 0 {
 			capacity := max(1, height-7)
 			start := max(0, m.folderChoiceIndex-capacity+1)
 			for i := start; i < min(len(m.folderChoices), start+capacity); i++ {
 				label := "  " + tuios.Clean(m.folderChoices[i].label)
-				style := normal
+				style := m.styles.normal
 				if i == m.folderChoiceIndex {
 					label = "› " + tuios.Clean(m.folderChoices[i].label)
-					style = pointer
+					style = m.styles.pointer
 				}
 				lines = append(lines, style.Render(fit(label, width-4)))
 			}
 			if m.projectOpen {
-				lines = append(lines, muted.Render(fit(tuios.Clean(m.folderChoices[m.folderChoiceIndex].path), width-4)))
+				lines = append(lines, m.styles.muted.Render(fit(tuios.Clean(m.folderChoices[m.folderChoiceIndex].path), width-4)))
 			}
 		} else if m.projectOpen {
-			lines = append(lines, muted.Render("일치하는 프로젝트 없음"))
+			lines = append(lines, m.styles.muted.Render("일치하는 프로젝트 없음"))
 		} else {
-			lines = append(lines, muted.Render("이번 생성에 사용할 폴더"), muted.Render("~/ 지원 · 상대 경로는 처음 제안된 폴더 기준"))
+			lines = append(lines, m.styles.muted.Render("이번 생성에 사용할 폴더"), m.styles.muted.Render("~/ 지원 · 상대 경로는 처음 제안된 폴더 기준"))
 		}
 	} else if m.creating() {
 		root, child := "Session", "Workspace"
 		if m.mode == "workspaces" {
 			root, child = "Workspace", "Pane"
 		}
-		rootStyle, childStyle := muted, muted
+		rootStyle, childStyle := m.styles.muted, m.styles.muted
 		if m.modalRow.ID == "" {
-			root, rootStyle = "[ "+root+" ]", pointer.Bold(true)
+			root, rootStyle = "[ "+root+" ]", m.styles.pointer.Bold(true)
 		} else {
-			child, childStyle = "[ "+child+" ]", pointer.Bold(true)
+			child, childStyle = "[ "+child+" ]", m.styles.pointer.Bold(true)
 		}
 		marker := "종류  "
 		if m.creationFocus == 2 {
 			marker = "› 종류  "
 		}
-		lines = []string{bright.Render(marker) + rootStyle.Render(root) + "   " + childStyle.Render(child)}
+		lines = []string{m.styles.bright.Render(marker) + rootStyle.Render(root) + "   " + childStyle.Render(child)}
 		if destination := m.creationDestination(); destination != "" {
-			lines = append(lines, muted.Render("소속  ")+bright.Render(tuios.Clean(destination)))
+			lines = append(lines, m.styles.muted.Render("소속  ")+m.styles.bright.Render(tuios.Clean(destination)))
 		}
 		lines = append(lines, "", m.prompt.View())
 		path := m.creationFolder.Path
@@ -363,7 +353,7 @@ func (m *model) listView(width, height int) string {
 		if m.creationFocus == 1 {
 			folderLabel = "› " + folderLabel
 		}
-		lines = append(lines, "", bright.Render(folderLabel))
+		lines = append(lines, "", m.styles.bright.Render(folderLabel))
 		// Keep spaces in paths: Clean collapses them and would display a
 		// different folder from the one actually passed to creation.
 		path = strings.Map(func(r rune) rune {
@@ -373,23 +363,23 @@ func (m *model) listView(width, height int) string {
 			return '�'
 		}, path)
 		lines = append(lines, strings.Split(ansi.Hardwrap(path, max(1, width-4), true), "\n")...)
-		lines = append(lines, muted.Render(fit(tuios.Clean(m.creationFolder.Source), width-4)))
+		lines = append(lines, m.styles.muted.Render(fit(tuios.Clean(m.creationFolder.Source), width-4)))
 		if m.creationChild.ID == "" {
-			lines = append(lines, muted.Render("하위 생성: 먼저 "+m.creationParentKind()+" 선택"))
+			lines = append(lines, m.styles.muted.Render("하위 생성: 먼저 "+m.creationParentKind()+" 선택"))
 		}
 	} else if m.modal == "send" {
-		lines = []string{muted.Render("대상 workspace"), bright.Render(fit(tuios.Clean(m.inputTarget), width-4)), muted.Render("대상 pane"), bright.Render(fit(tuios.Clean(m.modalRow.Label), width-4)), "", m.prompt.View(), "", muted.Render("텍스트와 Enter를 보냅니다")}
+		lines = []string{m.styles.muted.Render("대상 workspace"), m.styles.bright.Render(fit(tuios.Clean(m.inputTarget), width-4)), m.styles.muted.Render("대상 pane"), m.styles.bright.Render(fit(tuios.Clean(m.modalRow.Label), width-4)), "", m.prompt.View(), "", m.styles.muted.Render("텍스트와 Enter를 보냅니다")}
 	} else if m.modal != "" {
 		lines = []string{"", m.prompt.View()}
 	} else if m.loading && len(m.rows) == 0 {
-		lines = []string{muted.Render("불러오는 중…")}
+		lines = []string{m.styles.muted.Render("불러오는 중…")}
 	} else {
 		end := min(len(m.visible), m.offset+height-2)
 		for i := m.offset; i < end; i++ {
 			lines = append(lines, m.rowView(m.visible[i], width-4, i == m.index))
 		}
 		if len(m.visible) == 0 {
-			lines = append(lines, muted.Render("검색 결과 없음"))
+			lines = append(lines, m.styles.muted.Render("검색 결과 없음"))
 		}
 	}
 	title := "Sessions"
@@ -405,32 +395,32 @@ func (m *model) listView(width, height int) string {
 	} else if m.modal == "send" {
 		title = "입력 보내기"
 	}
-	return panel(title, strings.Join(lines, "\n"), width, height)
+	return m.panel(title, strings.Join(lines, "\n"), width, height)
 }
 
 func (m *model) previewView(width, height int) string {
 	w := max(1, width-4)
 	if len(m.preview.Panes) > 1 && !m.previewLoading {
-		header := muted.Render(fit(tuios.Clean(m.preview.Location), w))
-		header += "\n" + muted.Render(fit("● 입력 대상: "+tuios.Clean(strings.TrimPrefix(m.preview.Title, "● ")), w))
-		body := splitPreview(m.preview.Panes, m.preview.PaneID, w, max(1, height-5))
-		return panel("Workspace preview", header+"\n\n"+body, width, height)
+		header := m.styles.muted.Render(fit(tuios.Clean(m.preview.Location), w))
+		header += "\n" + m.styles.muted.Render(fit("● 입력 대상: "+tuios.Clean(strings.TrimPrefix(m.preview.Title, "● ")), w))
+		body := m.styles.splitPreview(m.preview.Panes, m.preview.PaneID, w, max(1, height-5))
+		return m.panel("Workspace preview", header+"\n\n"+body, width, height)
 	}
-	title, location := bright.Render(tuios.Clean(m.preview.Title)), muted.Render(tuios.Clean(m.preview.Location))
+	title, location := m.styles.bright.Render(tuios.Clean(m.preview.Title)), m.styles.muted.Render(tuios.Clean(m.preview.Location))
 	if m.previewLoading {
-		title = muted.Render("불러오는 중…")
+		title = m.styles.muted.Render("불러오는 중…")
 		location = ""
 	}
 	status := ""
 	if m.preview.Current {
-		status = green.Render("current")
+		status = m.styles.green.Render("current")
 	}
-	header := []string{"", pair(title, location, w), pair(muted.Render(tuios.Clean(m.preview.Path)), status, w), border.Render(strings.Repeat("─", w)), ""}
+	header := []string{"", pair(title, location, w), pair(m.styles.muted.Render(tuios.Clean(m.preview.Path)), status, w), m.styles.border.Render(strings.Repeat("─", w)), ""}
 	panelTitle := "Preview"
 	if m.preview.Overview {
 		panelTitle = "Session overview"
 	}
-	return panel(panelTitle, strings.Join(header, "\n")+"\n"+m.viewport.View(), width, height)
+	return m.panel(panelTitle, strings.Join(header, "\n")+"\n"+m.viewport.View(), width, height)
 }
 
 func (m *model) View() tea.View {
@@ -443,7 +433,7 @@ func (m *model) View() tea.View {
 	if m.mode == "sessions" && strings.TrimSpace(m.search.Value()) != "" {
 		total = len(m.rows)
 	}
-	count := muted.Render(fmt.Sprintf("%d/%d", len(m.visible), total))
+	count := m.styles.muted.Render(fmt.Sprintf("%d/%d", len(m.visible), total))
 	if m.modal != "" {
 		heading := "이름 변경"
 		if m.creating() {
@@ -451,10 +441,10 @@ func (m *model) View() tea.View {
 		} else if m.modal == "send" {
 			heading = "입력 보내기"
 		}
-		input = bright.Render(heading)
+		input = m.styles.bright.Render(heading)
 		count = ""
 	}
-	left := pair(input, count, d.leftW) + "\n" + border.Render(strings.Repeat("─", d.leftW)) + "\n\n" + m.listView(d.leftW, d.leftH-3)
+	left := pair(input, count, d.leftW) + "\n" + m.styles.border.Render(strings.Repeat("─", d.leftW)) + "\n\n" + m.listView(d.leftW, d.leftH-3)
 	body := left
 	if m.showPreview && d.rightW > 0 {
 		right := m.previewView(d.rightW, d.rightH)
@@ -471,9 +461,9 @@ func (m *model) View() tea.View {
 		}
 		status += "목록 갱신 중…"
 	}
-	footer := muted.Render(fit(tuios.Clean(status), max(0, m.width-2)))
+	footer := m.styles.muted.Render(fit(tuios.Clean(status), max(0, m.width-2)))
 	for _, line := range m.helpLines() {
-		footer += "\n" + normal.Render(line)
+		footer += "\n" + m.styles.normal.Render(line)
 	}
 	content := lipgloss.NewStyle().Padding(0, 1).Render(body + "\n" + footer)
 	v := tea.NewView(content)

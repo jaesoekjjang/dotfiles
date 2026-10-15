@@ -452,10 +452,11 @@ func TestStandaloneConfirmationDoesNotLoadList(t *testing.T) {
 	m := ready()
 	m.standalone = true
 	m.modal = "close"
-	if m.Init() != nil {
-		t.Fatal("no unnecessary list load")
+	cmd := m.Init()
+	if cmd == nil || !reflect.DeepEqual(cmd(), tea.RequestBackgroundColor()) {
+		t.Fatal("standalone confirmation should only query background, without loading the list")
 	}
-	_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	_, cmd = m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	if _, ok := cmd().(tea.QuitMsg); !ok {
 		t.Fatal("cancel standalone closes picker")
 	}
