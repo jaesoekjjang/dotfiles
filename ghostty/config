@@ -1,4 +1,6 @@
 # Window
+# Start every new surface in the most recent TUIOS session; keep a shell fallback.
+command = shell:/bin/zsh -l ~/.local/bin/tuios-start
 title = " "
 macos-titlebar-style = hidden
 window-padding-color = extend

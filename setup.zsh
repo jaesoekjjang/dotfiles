@@ -90,7 +90,7 @@ local_directory "$HOME/.local/bin"
 if [[ -L "$HOME/.local/bin/cc-arm64" && "$(readlink "$HOME/.local/bin/cc-arm64")" == "$DOTFILES/bin/cc-arm64" ]]; then
   rm "$HOME/.local/bin/cc-arm64"
 fi
-for name in open_editor edit_files setup zsh_reload workspace tuios-trial tuios-picker tuios-theme-picker dotfiles-doctor; do
+for name in open_editor edit_files setup zsh_reload workspace tuios-trial tuios-picker tuios-theme-picker tuios-start dotfiles-doctor; do
   [[ -f "$DOTFILES/bin/$name" ]] || continue
   chmod +x "$DOTFILES/bin/$name"
   link_config "$DOTFILES/bin/$name" "$HOME/.local/bin/$name"

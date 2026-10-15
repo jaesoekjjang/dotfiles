@@ -2,6 +2,8 @@
 
 macOS용 zsh + Ghostty + AeroSpace + tmux/workmux + TUIOS + Neovim + Yazi 설정.
 
+Ghostty의 새 창·탭·Quick Terminal은 `tuios attach`로 최근 세션에 연결한다. 저장된 세션이 없으면 새 세션을 열고, tuios가 설치되지 않은 환경에서는 zsh로 시작한다. 기존 Ghostty에는 `Cmd+Shift+,`로 설정을 다시 읽힌 뒤 새 창을 연다.
+
 ## 새 Mac에서 설치
 
 1. `./install.zsh` → `./setup.zsh`를 실행한다.

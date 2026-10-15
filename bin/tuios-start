@@ -1,0 +1,7 @@
+#!/bin/zsh
+# Ghostty runs this through a login shell so Homebrew is on PATH.
+emulate -LR zsh
+if (( $+commands[tuios] )); then
+  exec tuios attach
+fi
+exec /bin/zsh -l
