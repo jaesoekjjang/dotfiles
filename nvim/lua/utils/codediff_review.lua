@@ -259,32 +259,8 @@ local function preview_cursor()
 	end
 	local node = panel.tree:get_node()
 	local file = node and node.data
-	if file and file.type == "commit" then
-		local hash = file.hash
-		panel.load_commit_files(node, function(err)
-			-- Git may finish after the cursor moved or preview was disabled.
-			if err or not session.dotfiles_auto_preview or lifecycle.get_session(tab) ~= session
-				or lifecycle.get_panel_view(tab) ~= panel or vim.api.nvim_get_current_buf() ~= panel.bufnr
-			then
-				return
-			end
-			local active = panel.tree:get_node()
-			if not active or not active.data or active.data.hash ~= hash then
-				return
-			end
-			local selected = panel.data.current_selection or {}
-			local files = panel.data.files[hash] or {}
-			local candidate = files[1]
-			for _, item in ipairs(files) do
-				if item.path == selected.path then candidate = item; break end
-			end
-			if candidate and (selected.commit_hash ~= hash or selected.path ~= candidate.path) then
-				panel.on_file_select(vim.tbl_extend("force", candidate, { commit_hash = hash, git_root = session.git_root }))
-			end
-		end)
-		return
-	end
-	if not file or file.type == "group" or file.type == "directory" or not file.path then
+	-- Commit rows belong to Enter's expand/collapse action; preview only files.
+	if not file or file.type == "commit" or file.type == "group" or file.type == "directory" or not file.path then
 		return
 	end
 	local selected = panel.data.current_selection or {}

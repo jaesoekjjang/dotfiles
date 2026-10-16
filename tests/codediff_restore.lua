@@ -108,21 +108,45 @@ local function select_node(predicate)
     if node and predicate(node.data) then
       vim.api.nvim_win_set_cursor(history.winid,{row,0})
       vim.api.nvim_exec_autocmds('CursorMoved',{})
-      return
+      return node
     end
   end
   error('missing history node')
 end
-select_node(function(d) return d.type=='commit' and d.hash==base end)
-assert(vim.wait(3000,function() return history.data.current_selection.commit_hash==base end),'preview older commit')
-select_node(function(d) return d.type=='commit' and d.hash==head end)
-assert(vim.wait(3000,function() return history.data.current_selection.commit_hash==head end),'preview newer commit')
-select_node(function(d) return d.type=='file' and d.commit_hash==head and d.path=='b.txt' end)
-assert(vim.wait(3000,function() return history.data.current_selection.path=='b.txt' end),'preview history file')
-hp()
-select_node(function(d) return d.type=='commit' and d.hash==base end)
+local enter=vim.fn.maparg('<CR>','n',false,true).callback
+assert(type(enter)=='function','history Enter binding')
+local before=vim.deepcopy(history.data.current_selection)
+local older=select_node(function(d) return d.type=='commit' and d.hash==base end)
+local was_expanded=older:is_expanded()
 vim.wait(100)
-assert(history.data.current_selection.commit_hash==head,'disabled history preview')
-print('PASS: history commit/file preview,  compact default, preview toggle, recovery key, buffer replacement, unsaved edits, closed explorer, GitDiff reuse, closed comparison')
+assert(older:is_expanded()==was_expanded,'commit cursor preserves expansion')
+assert(vim.deep_equal(history.data.current_selection,before),'commit cursor preserves selection')
+if older:is_expanded() then enter() end
+assert(not older:is_expanded(),'Enter collapses commit')
+vim.api.nvim_exec_autocmds('CursorMoved',{})
+hp(); hp()
+vim.wait(100)
+assert(not older:is_expanded(),'preview and toggle do not reopen commit')
+assert(vim.deep_equal(history.data.current_selection,before),'preview toggle on commit preserves selection')
+enter()
+assert(vim.wait(3000,function()
+  for row=1,vim.api.nvim_buf_line_count(history.bufnr) do
+    local node=history.tree:get_node(row)
+    if node and node.data.type=='file' and node.data.commit_hash==base then return true end
+  end
+  return false
+end),'Enter expands older commit files')
+select_node(function(d) return d.type=='file' and d.commit_hash==base and d.path=='b.txt' end)
+assert(vim.wait(3000,function() return history.data.current_selection.commit_hash==base and history.data.current_selection.path=='b.txt' end),'preview older history file')
+select_node(function(d) return d.type=='commit' and d.hash==head end)
+vim.wait(100)
+assert(history.data.current_selection.commit_hash==base,'newer commit cursor preserves selection')
+hp()
+select_node(function(d) return d.type=='file' and d.commit_hash==base and d.path=='a.txt' end)
+vim.wait(100)
+assert(history.data.current_selection.path=='b.txt','disabled history file preview')
+hp()
+assert(vim.wait(3000,function() return history.data.current_selection.path=='a.txt' end),'enabling preview selects current file')
+print('PASS: history file-only preview and Enter collapse, compact default, preview toggle, recovery key, buffer replacement, unsaved edits, closed explorer, GitDiff reuse, closed comparison')
 vim.fn.delete(repo,'rf')
 vim.cmd('qa!')

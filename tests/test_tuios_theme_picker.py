@@ -33,7 +33,8 @@ class ThemePickerTests(unittest.TestCase):
         self.addCleanup(directory.cleanup)
         self.bundle = Path(directory.name) / "palettes.json"
         self.bundle.write_text(json.dumps({"session": "source", "palettes": self.palettes}))
-        environment = patch.dict(os.environ, XDG_CONFIG_HOME=directory.name)
+        environment = patch.dict(os.environ, XDG_CONFIG_HOME=directory.name,
+                                 TUIOS_THEME_FAVORITES=str(Path(directory.name) / "shared/theme-favorites.json"))
         environment.start()
         self.addCleanup(environment.stop)
 
@@ -63,6 +64,37 @@ class ThemePickerTests(unittest.TestCase):
         self.assertEqual(json.loads(picker.favorites_path().read_text()), ["dayfox", "nightfox"])
         picker.toggle_favorite("dayfox")
         self.assertEqual(picker.load_favorites(), {"nightfox"})
+
+    def test_default_favorites_live_in_resolved_dotfiles_checkout(self):
+        with patch.dict(os.environ, TUIOS_THEME_FAVORITES=""):
+            self.assertEqual(picker.favorites_path(), ROOT / "tuios/theme-favorites.json")
+
+    def test_devices_share_updates_and_import_local_favorites_only_once(self):
+        shared = picker.favorites_path()
+        with tempfile.TemporaryDirectory() as directory:
+            for device, theme in (("first", "dayfox"), ("second", "nightfox")):
+                config = Path(directory) / device
+                legacy = config / "tuios/theme-favorites.json"
+                legacy.parent.mkdir(parents=True)
+                legacy.write_text(json.dumps([theme]))
+                with patch.dict(os.environ, XDG_CONFIG_HOME=str(config)):
+                    self.assertIn(theme, picker.load_favorites())
+                    self.assertTrue(legacy.with_suffix(".migrated").exists())
+                    self.assertEqual(json.loads(legacy.read_text()), [theme])
+            self.assertEqual(json.loads(shared.read_text()), ["dayfox", "nightfox"])
+            picker.toggle_favorite("dayfox")
+            with patch.dict(os.environ, XDG_CONFIG_HOME=str(Path(directory) / "first")):
+                self.assertEqual(picker.load_favorites(), {"nightfox"})
+
+    def test_invalid_local_favorites_leave_shared_data_and_migration_untouched(self):
+        picker.save_favorites(picker.favorites_path(), {"dayfox"})
+        legacy = Path(os.environ["XDG_CONFIG_HOME"]) / "tuios/theme-favorites.json"
+        legacy.parent.mkdir(parents=True)
+        legacy.write_text('{"invalid": true}')
+        with self.assertRaises(ValueError):
+            picker.load_favorites()
+        self.assertEqual(picker.read_favorites(picker.favorites_path()), {"dayfox"})
+        self.assertFalse(legacy.with_suffix(".migrated").exists())
 
     def test_favorites_view_filters_by_polarity_and_marks_rows(self):
         for theme in ("serendipity_morning", "nightfox", "removed_theme"):
@@ -119,7 +151,8 @@ class ThemePickerTests(unittest.TestCase):
                 pid, master = pty.fork()
                 if pid == 0:
                     try:
-                        os.environ.update(TERM='xterm-256color', XDG_CONFIG_HOME=directory)
+                        os.environ.update(TERM='xterm-256color', XDG_CONFIG_HOME=directory,
+                                          TUIOS_THEME_FAVORITES=str(root / 'shared/theme-favorites.json'))
                         real_run = picker.subprocess.run
                         def run(command, **kwargs):
                             command = [arg for arg in command if not arg.startswith('--preview=') and not arg.startswith('--bind=focus:')]
@@ -145,7 +178,7 @@ class ThemePickerTests(unittest.TestCase):
                 try:
                     pump_until(lambda: b'Light' in transcript)
                     os.write(master, b'\x06')
-                    favorite_file = root / 'tuios/theme-favorites.json'
+                    favorite_file = root / 'shared/theme-favorites.json'
                     pump_until(lambda: favorite_file.exists() and original in json.loads(favorite_file.read_text()))
                     time.sleep(.2)
                     os.write(master, b'\x06')

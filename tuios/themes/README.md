@@ -6,7 +6,7 @@
 
 `prefix → Ctrl+t`로 `tuios-theme-picker`를 연다. 현재 테마와 같은 밝기 그룹으로 시작하며, 이름을 입력해 검색하고 방향키로 미리본다. Tab은 Light/Dark 그룹을 전환하고, Enter는 선택을 로컬 설정에 저장하며, Esc는 열기 전 테마를 복원한다. 목록은 이름순으로 유지하며, 열면 현재 테마 위치에 커서를 둔다. 테마를 적용한 뒤 다시 열어도 바로 다음 테마부터 탐색할 수 있다.
 
-즐겨찾기는 `Ctrl+F`로 추가·해제하며 목록에 `★`로 표시한다. `Ctrl+G`는 현재 Light/Dark 그룹의 전체 목록과 즐겨찾기만 보기를 전환한다. 즐겨찾기 갱신과 전체/즐겨찾기 전환은 선택기를 닫지 않고 목록만 갱신한다. 목록은 이름순을 유지하며 검색어와 커서 위치를 이어간다. 즐겨찾기는 `${XDG_CONFIG_HOME:-~/.config}/tuios/theme-favorites.json`에 저장하고, Esc로 테마 미리보기를 취소해도 즐겨찾기 변경은 유지한다.
+즐겨찾기는 `Ctrl+F`로 추가·해제하며 목록에 `★`로 표시한다. `Ctrl+G`는 현재 Light/Dark 그룹의 전체 목록과 즐겨찾기만 보기를 전환한다. 즐겨찾기 갱신과 전체/즐겨찾기 전환은 선택기를 닫지 않고 목록만 갱신한다. 목록은 이름순을 유지하며 검색어와 커서 위치를 이어간다. 즐겨찾기는 Dotfiles의 `tuios/theme-favorites.json`에 저장하므로, 같은 iCloud Dotfiles를 사용하는 기기끼리 공유한다. 각 기기의 기존 `${XDG_CONFIG_HOME:-~/.config}/tuios/theme-favorites.json`은 첫 실행 때 한 번 합치며 원본은 백업으로 남긴다 (`theme-favorites.migrated`가 재이관을 방지한다). Esc로 테마 미리보기를 취소해도 즐겨찾기 변경은 유지한다. 다른 기기의 변경은 iCloud 동기화 후 선택기를 다시 열면 반영된다. 별도 Git checkout은 이 파일도 Git으로 전달해야 하며, 여러 기기에서 동시에 수정하면 마지막 저장이 우선할 수 있다. 저장 위치는 `TUIOS_THEME_FAVORITES`로 재정의할 수 있다.
 
 `tuios-theme-picker light` 또는 `tuios-theme-picker dark`로 그룹을 직접 지정할 수도 있다. 분류는 이름에 light/dark가 있는지 대신 TUIOS가 반환하는 실제 팔레트의 `dark` 값을 사용한다. 미리보기에는 파일을 저장하지 않는 `SetTheme` 명령을 쓰고, 확정할 때만 설정 API를 호출한다. Settings 안의 내장 선택기는 기존 동작을 유지한다. fzf가 필요하다.
 

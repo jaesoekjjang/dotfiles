@@ -50,13 +50,13 @@ def group_ids(palettes, dark):
 
 
 def favorites_path():
-    config = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
-    return config / "tuios/theme-favorites.json"
+    override = os.environ.get("TUIOS_THEME_FAVORITES")
+    return Path(override) if override else Path(__file__).resolve().parents[1] / "tuios/theme-favorites.json"
 
 
-def load_favorites():
+def read_favorites(path):
     try:
-        value = json.loads(favorites_path().read_text())
+        value = json.loads(path.read_text())
     except FileNotFoundError:
         return set()
     if not isinstance(value, list) or any(not isinstance(name, str) for name in value):
@@ -64,13 +64,7 @@ def load_favorites():
     return set(value)
 
 
-def toggle_favorite(theme):
-    favorites = load_favorites()
-    if theme in favorites:
-        favorites.remove(theme)
-    else:
-        favorites.add(theme)
-    path = favorites_path()
+def save_favorites(path, favorites):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = None
     try:
@@ -82,6 +76,30 @@ def toggle_favorite(theme):
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
+
+
+def load_favorites():
+    path = favorites_path()
+    favorites = read_favorites(path)
+    config = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+    legacy = config / "tuios/theme-favorites.json"
+    migrated = legacy.with_suffix(".migrated")
+    # Import each device once; keep the old JSON as a backup. Reimporting on
+    # every load would restore favorites removed from the shared list.
+    if legacy != path and legacy.exists() and not migrated.exists():
+        favorites |= read_favorites(legacy)
+        save_favorites(path, favorites)
+        migrated.touch()
+    return favorites
+
+
+def toggle_favorite(theme):
+    favorites = load_favorites()
+    if theme in favorites:
+        favorites.remove(theme)
+    else:
+        favorites.add(theme)
+    save_favorites(favorites_path(), favorites)
 
 
 def apply_theme(session, theme):
