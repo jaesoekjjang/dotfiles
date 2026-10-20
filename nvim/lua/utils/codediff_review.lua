@@ -278,6 +278,25 @@ local function toggle_preview()
 	end
 end
 
+local function scroll_preview(key)
+	local lifecycle = require("codediff.ui.lifecycle")
+	local session = lifecycle.get_session(vim.api.nvim_get_current_tabpage())
+	if not session then
+		return
+	end
+	-- Resolve the current comparison each time: selecting a file can replace it.
+	local side = session.single_side == "original" and "original" or "modified"
+	local win = session[side .. "_win"]
+	if not win or not vim.api.nvim_win_is_valid(win)
+		or vim.api.nvim_win_get_buf(win) ~= session[side .. "_bufnr"] then
+		return
+	end
+	local count = vim.v.count > 0 and tostring(vim.v.count) or ""
+	vim.api.nvim_win_call(win, function()
+		vim.cmd.normal({ count .. vim.api.nvim_replace_termcodes(key, true, false, true), bang = true })
+	end)
+end
+
 function M.setup_keymaps()
 	local group = vim.api.nvim_create_augroup("DotfilesCodeDiffKeys", { clear = true })
 	local function bind()
@@ -296,6 +315,21 @@ function M.setup_keymaps()
 			lifecycle.set_tab_keymap(tab, "n", "gP", M.toggle_panel_position,
 				{ desc = "Move CodeDiff panel left/bottom" })
 			local panel = lifecycle.get_panel_view(tab)
+			if panel and session.panel.name == "explorer" then
+				lifecycle.set_buf_keymap(tab, panel.bufnr, "n", "s", function()
+					require("codediff.ui.explorer").toggle_stage_entry(panel, panel.tree)
+				end, { desc = "Toggle stage/unstage", nowait = true }, { suspendable = false })
+				for key, desc in pairs({
+					["<C-d>"] = "Scroll diff down half a page",
+					["<C-u>"] = "Scroll diff up half a page",
+					["<C-e>"] = "Scroll diff down one line",
+					["<C-y>"] = "Scroll diff up one line",
+				}) do
+					lifecycle.set_buf_keymap(tab, panel.bufnr, "n", key, function()
+						scroll_preview(key)
+					end, { desc = desc, nowait = true }, { suspendable = false })
+				end
+			end
 			if panel and (session.panel.name == "explorer" or session.panel.name == "history") then
 				lifecycle.set_buf_keymap(tab, panel.bufnr, "n", "<C-p>", toggle_preview,
 					{ desc = "Toggle CodeDiff cursor preview" }, { suspendable = false })

@@ -183,6 +183,9 @@ Neovim의 Lazygit 매핑은 제거했다. 저장소 상태는 Fugitive로 열고
 
 Gitsigns는 Git 파일의 변경 표시와 hunk 작업을 담당한다.
 
+CodeDiff 파일 목록에서는 `s`로 파일을 stage/unstage한다. `-`는 기존 창 너비 줄이기를 유지하고, diff 본문의 `s`는 기본 편집 동작을 유지한다.
+목록에 포커스를 둔 채 `Ctrl-d` / `Ctrl-u`로 diff 본문을 반 페이지, `Ctrl-e` / `Ctrl-y`로 한 줄씩 아래 / 위로 스크롤한다.
+
 | 키 | 동작 |
 | --- | --- |
 | `[h` / `]h` | 이전·다음 hunk; 개수 지정 가능 |

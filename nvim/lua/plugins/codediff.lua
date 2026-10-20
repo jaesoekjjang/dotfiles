@@ -27,6 +27,7 @@ return {
 			history = { position = "left" },
 			keymaps = {
 				view = {
+					toggle_stage = false, -- Use s only in the explorer; preserve resize/edit keys.
 					next_file = { "]f", "<Tab>" },
 					prev_file = { "[f", "<S-Tab>" },
 				},

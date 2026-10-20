@@ -5,6 +5,7 @@ vim.opt.rtp:prepend(root..'/nvim')
 for _,name in ipairs({'nui.nvim','plenary.nvim','codediff.nvim'}) do vim.opt.rtp:append(vim.fn.expand('~/.local/share/nvim/lazy/'..name)) end
 vim.opt.swapfile=false
 vim.opt.hidden=true
+vim.keymap.set('n', '-', '<cmd>vertical resize -5<cr>')
 dofile(root..'/nvim/lua/plugins/codediff.lua').config()
 local repo=vim.fn.tempname()
 vim.fn.mkdir(repo,'p'); repo=vim.uv.fs_realpath(repo)
@@ -23,6 +24,42 @@ vim.api.nvim_set_current_win(explorer.winid)
 vim.wait(100)
 local panel_buffer=explorer.bufnr
 local panel_window=explorer.winid
+assert(vim.fn.maparg('-', 'n', false, true).buffer == 0, 'explorer preserves global resize key')
+local stage=vim.fn.maparg('s','n',false,true).callback
+assert(type(stage)=='function', 'explorer stage key')
+local function select_a()
+  vim.api.nvim_set_current_win(explorer.winid)
+  for row,line in ipairs(vim.api.nvim_buf_get_lines(explorer.bufnr,0,-1,false)) do
+    if line:find('a.txt',1,true) then
+      vim.api.nvim_win_set_cursor(explorer.winid,{row,0})
+      return
+    end
+  end
+  error('missing stage target')
+end
+local function staged_count(n)
+  local changed=vim.wait(5000,function()
+    return #(vim.split(vim.trim(git('diff','--cached','--name-only').stdout), '\n', {trimempty=true})) == n
+  end)
+  -- Headless runs do not deliver the native render-ready callback.
+  require('codediff.ui.refresh').ready(tab)
+  require('codediff.ui.refresh').request(tab, {full=true})
+  local refreshed=vim.wait(5000,function() return #explorer.data.status_result.staged == n end)
+  return changed and refreshed
+end
+select_a()
+stage()
+assert(staged_count(1), 's stages selected file in actual index')
+vim.wait(200)
+select_a()
+stage()
+assert(staged_count(0), 's unstages selected file in actual index')
+explorer.on_file_select({path='a.txt',group='unstaged',git_root=repo,status='M'}, {force=true})
+vim.wait(300)
+vim.api.nvim_set_current_win(s.modified_win)
+assert(vim.fn.maparg('s','n') == '', 'diff body preserves native s')
+assert(vim.fn.maparg('-', 'n', false, true).buffer == 0, 'diff body preserves global resize key')
+vim.api.nvim_set_current_win(explorer.winid)
 local reposition=vim.fn.maparg('gP','n',false,true).callback
 assert(type(reposition)=='function', 'panel position key')
 reposition()
