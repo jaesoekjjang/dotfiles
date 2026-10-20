@@ -44,13 +44,12 @@ func TestCreationFocusAndFolderCompletionKeys(t *testing.T) {
 	pressCreate(m)
 	m.prompt.SetValue("new")
 	original := m.modal
-	m.Update(ctrl('n'))
-	if m.creationFocus != 1 || m.prompt.Focused() || m.View().Cursor != nil || m.modal != original {
-		t.Fatal("C-n should focus folder without changing kind")
+	m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	if !m.folderEditing || m.prompt.Focused() || m.modal != original {
+		t.Fatal("Tab should directly focus folder without changing kind")
 	}
-	m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if !m.folderEditing {
-		t.Fatal("Enter on folder opens editor")
+		t.Fatal("folder field owns the input")
 	}
 	base := t.TempDir()
 	for _, name := range []string{"한글 a", "한글 b"} {
@@ -62,8 +61,8 @@ func TestCreationFocusAndFolderCompletionKeys(t *testing.T) {
 	if len(m.folderChoices) != 2 {
 		t.Fatal(m.folderChoices)
 	}
-	m.Update(ctrl('n'))
-	m.Update(ctrl('n'))
+	m.Update(ctrl('j'))
+	m.Update(ctrl('j'))
 	m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if m.folderInput.Value() != "한글 b/" || !m.folderEditing || m.busy {
 		t.Fatal("select completion must not apply or create")
@@ -85,10 +84,10 @@ func TestProjectSearchNavigationPasteCancelAndStaleLoad(t *testing.T) {
 	m.openProjects() // Inject results rather than invoking external processes.
 	stale := m.projectGeneration
 	m.Update(projectsMsg{generation: stale, choices: parseProjects("/tmp/a\tanchorbase / docs\tmain\n/tmp/b\tDotfiles\tmain\n/tmp/b\tduplicate\tmain\n")})
-	m.Update(ctrl('n'))
-	m.Update(ctrl('p'))
+	m.Update(ctrl('j'))
+	m.Update(ctrl('k'))
 	if m.folderChoiceIndex != 0 {
-		t.Fatal("C-n/p should navigate")
+		t.Fatal("C-j/k should navigate")
 	}
 	m.Update(tea.PasteMsg{Content: "dot"})
 	if len(m.folderChoices) != 1 || m.folderChoices[0].path != "/tmp/b" {
@@ -118,24 +117,24 @@ func TestQuickTypeSwitchPreservesEditingAndFullHeight(t *testing.T) {
 	m.prompt.SetCursor(3)
 	folder := m.creationFolder.Path
 	original := m.modal
-	m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	m.Update(tea.KeyPressMsg{Code: ']', Text: "]"})
 	if m.modal == original || m.prompt.Value() != "keep name" || m.prompt.Position() != 3 || !m.prompt.Focused() || m.creationFolder.Path != folder {
 		t.Fatal("quick toggle must preserve input and caret")
 	}
 	m.Update(ctrl('o'))
 	m.folderInput.SetValue("~/draft")
 	m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	m.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
+	m.Update(tea.KeyPressMsg{Code: '[', Text: "["})
 	if m.modal != original || !m.prompt.Focused() {
-		t.Fatal("Shift-Tab must also toggle kind")
+		t.Fatal("[ must also toggle kind")
 	}
-	m.Update(ctrl('p'))
-	if m.creationFocus != 2 {
-		t.Fatal("C-p must move to previous field")
+	m.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
+	if !m.folderEditing {
+		t.Fatal("Shift-Tab must focus the folder input")
 	}
-	m.Update(ctrl('n'))
+	m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	if m.creationFocus != 0 || !m.prompt.Focused() {
-		t.Fatal("C-n must restore name focus")
+		t.Fatal("Tab must restore name focus")
 	}
 	m.height = 60
 	if m.dimensions().leftH < 50 {
@@ -165,9 +164,9 @@ func TestAutomaticSuggestionsDoNotHijackTypedDirectory(t *testing.T) {
 	if len(m.folderChoices) != 1 {
 		t.Fatal("typing must refresh candidates")
 	}
-	m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	m.Update(ctrl('l'))
 	if m.folderInput.Value() != filepath.Join(base, "child")+"/" || !m.folderEditing {
-		t.Fatal("Tab should complete without applying")
+		t.Fatal("C-l should complete without applying")
 	}
 }
 

@@ -563,10 +563,9 @@ func (s *Service) updateHistory(target string, sessions []session, clients []cli
 	if err := os.MkdirAll(s.State, 0700); err != nil {
 		return nil, err
 	}
-	key := os.Getenv("TUIOS_SOCKET")
-	if key == "" {
-		key = "default"
-	}
+	// Hooks may omit TUIOS_SOCKET while key commands set it explicitly.
+	// Both must use the resolved daemon socket to share the same history.
+	key := s.Socket
 	hash := fmt.Sprintf("%x", sha256.Sum256([]byte(key)))[:16]
 	base := filepath.Join(s.State, "session-history-"+hash)
 	lock, err := os.OpenFile(base+".lock", os.O_CREATE|os.O_WRONLY, 0600)
@@ -585,6 +584,11 @@ func (s *Service) updateHistory(target string, sessions []session, clients []cli
 	}
 	old := map[string][]string{}
 	bytes, readErr := os.ReadFile(base + ".json")
+	if os.IsNotExist(readErr) {
+		// The former picker used "default" when the socket was implicit.
+		legacy := fmt.Sprintf("%x", sha256.Sum256([]byte("default")))[:16]
+		bytes, readErr = os.ReadFile(filepath.Join(s.State, "session-history-"+legacy+".json"))
+	}
 	if readErr != nil && !os.IsNotExist(readErr) {
 		return nil, readErr
 	}
@@ -630,5 +634,10 @@ func (s *Service) updateHistory(target string, sessions []session, clients []cli
 	}
 	return live, err
 }
-func (s *Service) Record() error { _, err := s.history(""); return err }
-func (s *Service) Last() error   { _, err := s.history(s.Target); return err }
+func (s *Service) Record() error {
+	if _, err := s.history(""); err != nil {
+		return err
+	}
+	return s.RecordLocation()
+}
+func (s *Service) Last() error { _, err := s.history(s.Target); return err }

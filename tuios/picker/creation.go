@@ -14,6 +14,11 @@ func (m *model) creating() bool { return strings.HasPrefix(m.modal, "create-") }
 func (m *model) openCreation() tea.Cmd {
 	selected, _ := m.selected()
 	m.folderEditing = false
+	m.creationSuggestedName = ""
+	m.creationAcceptedQuery = ""
+	m.projects = nil
+	m.projectLoading = false
+	m.projectGeneration++
 	m.creationFocus = 0
 	m.projectOpen = false
 	m.folderChoices = nil
@@ -21,6 +26,7 @@ func (m *model) openCreation() tea.Cmd {
 	m.folderGeneration++
 	m.creationFolder = tuios.CreationFolder{}
 	m.creationBase = ""
+	m.folderInput.Reset()
 	m.creationChild = tuios.Row{}
 	m.status = ""
 	m.creationLocation = "현재 session"
@@ -51,6 +57,8 @@ func (m *model) openCreation() tea.Cmd {
 	if row, ok := m.selected(); ok && row.Parent != "" && m.creationChild.ID != "" {
 		m.switchCreation()
 	}
+
+	m.resize()
 	generation := m.folderGeneration
 	return func() tea.Msg {
 		folder, err := m.service.CreationFolder(selected)
@@ -65,6 +73,9 @@ type creationFolderMsg struct {
 }
 
 func (m *model) openFolder() tea.Cmd {
+	if m.sessionCreation() {
+		return m.openSessionFolder()
+	}
 	if m.folderLoading {
 		m.status = "시작 폴더를 확인하는 중입니다"
 		return nil
@@ -82,23 +93,26 @@ func (m *model) openFolder() tea.Cmd {
 }
 
 func (m *model) updateFolder(msg tea.KeyPressMsg) tea.Cmd {
+	if m.sessionCreation() {
+		return m.updateSessionFolder(msg)
+	}
 	if m.projectOpen {
 		return m.updateProjects(msg)
 	}
 	key := msg.String()
 	if len(m.folderChoices) > 0 {
 		switch key {
-		case "ctrl+n", "ctrl+l", "ctrl+j":
+		case "ctrl+n", "ctrl+j", "down":
 			m.folderChoiceIndex = (m.folderChoiceIndex + 1) % len(m.folderChoices)
 			return nil
-		case "ctrl+p", "ctrl+h", "ctrl+k", "shift+tab":
+		case "ctrl+p", "ctrl+k", "up":
 			if m.folderChoiceIndex < 0 {
 				m.folderChoiceIndex = 0
 			}
 			m.folderChoiceIndex = (m.folderChoiceIndex + len(m.folderChoices) - 1) % len(m.folderChoices)
 			return nil
-		case "tab", "enter":
-			if key == "tab" || m.folderChoiceIndex >= 0 {
+		case "ctrl+l", "enter":
+			if key == "ctrl+l" || m.folderChoiceIndex >= 0 {
 				index := max(0, m.folderChoiceIndex)
 				m.folderInput.SetValue(m.folderChoices[index].path)
 				m.folderInput.CursorEnd()
@@ -113,7 +127,7 @@ func (m *model) updateFolder(msg tea.KeyPressMsg) tea.Cmd {
 	switch key {
 	case "ctrl+o":
 		return m.openProjects()
-	case "tab":
+	case "ctrl+l":
 		m.refreshFolderChoices()
 		if len(m.folderChoices) == 1 {
 			m.folderInput.SetValue(m.folderChoices[0].path)
@@ -150,6 +164,11 @@ func (m *model) updateFolder(msg tea.KeyPressMsg) tea.Cmd {
 }
 
 func (m *model) create() tea.Cmd {
+	if m.sessionCreation() && m.folderInput.Value() != m.creationAcceptedQuery {
+		cmd := m.openSessionFolder()
+		m.status = "시작 폴더를 Enter로 먼저 확정하세요"
+		return cmd
+	}
 	if m.folderLoading {
 		m.status = "시작 폴더를 확인하는 중입니다"
 		return nil
@@ -167,12 +186,18 @@ func (m *model) create() tea.Cmd {
 	}
 }
 
-func (m *model) switchCreation() {
+func (m *model) switchCreation() tea.Cmd {
 	if m.creationChild.ID == "" {
 		m.status = "하위 항목을 추가할 " + m.creationParentKind() + "을 먼저 선택하세요"
-		return
+		return nil
 	}
 	m.status = ""
+	m.folderEditing = false
+	m.projectOpen = false
+	m.folderInput.Blur()
+	m.projectInput.Blur()
+	m.creationFocus = 0
+	m.prompt.Focus()
 	if m.modalRow.ID == "" {
 		m.modalRow = m.creationChild
 		m.modal = "create-workspace"
@@ -184,12 +209,20 @@ func (m *model) switchCreation() {
 	} else {
 		m.modalRow = tuios.Row{}
 		m.modal = "create-session"
-		m.prompt.Prompt = "새 session › "
+		m.prompt.Prompt = "이름 › "
 		if m.mode == "workspaces" {
 			m.modal = "create-workspace"
 			m.prompt.Prompt = "새 workspace › "
 		}
 	}
+	if m.sessionCreation() && !m.folderLoading {
+		m.folderInput.Prompt = "시작 폴더 › "
+		m.folderInput.Placeholder = "프로젝트 / worktree 검색 또는 ~/경로"
+		if m.projects == nil {
+			return m.loadProjects()
+		}
+	}
+	return nil
 }
 
 func (m *model) creationParentKind() string {

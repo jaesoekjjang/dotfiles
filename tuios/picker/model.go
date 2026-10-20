@@ -65,6 +65,8 @@ type model struct {
 	folderInput                            textinput.Model
 	folderEditing, folderLoading           bool
 	folderGeneration                       int
+	creationAcceptedQuery                  string
+	creationSuggestedName                  string
 	creationFocus                          int // 0 name, 1 folder, 2 kind
 	folderChoices, projects                []folderChoice
 	folderChoiceIndex                      int
@@ -261,7 +263,8 @@ func (m *model) openModal(kind string, row tuios.Row) tea.Cmd {
 		m.prompt.Prompt = "새 이름 › "
 		m.prompt.SetValue(row.Label)
 	case "create-session":
-		m.prompt.Prompt = "새 session › "
+		m.prompt.Prompt = "이름 › "
+		m.prompt.Placeholder = "폴더 선택 시 자동 입력"
 	case "create-workspace":
 		m.prompt.Prompt = "새 workspace › "
 	case "create-pane":
@@ -331,7 +334,7 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case projectsMsg:
-		if !m.projectOpen || msg.generation != m.projectGeneration {
+		if (!m.projectOpen && !m.sessionCreation()) || msg.generation != m.projectGeneration {
 			return m, nil
 		}
 		m.projectLoading = false
@@ -340,7 +343,18 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.projects = msg.choices
-		m.filterProjects()
+		if m.sessionCreation() {
+			status := m.status
+			if strings.HasPrefix(status, "프로젝트 목록:") {
+				status = ""
+			}
+			m.refreshSessionFolders()
+			if !m.folderEditing {
+				m.status = status
+			}
+		} else if m.projectOpen {
+			m.filterProjects()
+		}
 		return m, nil
 	case creationFolderMsg:
 		if !m.creating() || msg.generation != m.folderGeneration {
@@ -353,6 +367,13 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.creationFolder = msg.folder
 		m.creationBase = msg.folder.Path
+		if m.sessionCreation() {
+			m.folderInput.Prompt = "시작 폴더 › "
+			m.folderInput.Placeholder = "프로젝트 / worktree 검색 또는 ~/경로"
+			m.resize()
+			m.refreshSessionFolders()
+			return m, m.loadProjects()
+		}
 		return m, nil
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -458,6 +479,30 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		if m.busy {
 			return m, nil
 		}
+		if m.sessionCreation() && !m.folderEditing && key == "ctrl+enter" {
+			if strings.TrimSpace(m.prompt.Value()) == "" {
+				m.status = "이름을 입력하세요"
+				return m, nil
+			}
+			return m, m.create()
+		}
+		if m.sessionCreation() && key == "f5" {
+			return m, m.loadProjects()
+		}
+		if m.creating() && (key == "[" || key == "]") {
+			return m, m.switchCreation()
+		}
+		if m.creating() && (key == "tab" || key == "shift+tab") {
+			if m.folderEditing {
+				m.folderEditing = false
+				m.folderInput.Blur()
+				m.projectOpen = false
+				m.projectInput.Blur()
+				m.creationFocus = 0
+				return m, m.prompt.Focus()
+			}
+			return m, m.openFolder()
+		}
 		if m.folderEditing {
 			return m, m.updateFolder(msg)
 		}
@@ -488,25 +533,10 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 				if key == "ctrl+o" {
 					return m, m.openFolder()
 				}
-				if key == "tab" || key == "shift+tab" {
-					m.switchCreation()
-					return m, nil
-				}
-				if key == "ctrl+n" || key == "ctrl+p" || key == "ctrl+h" || key == "ctrl+l" || key == "ctrl+j" || key == "ctrl+k" {
-					step := 1
-					if key == "ctrl+p" || key == "ctrl+h" || key == "ctrl+k" {
-						step = -1
-					}
-					m.creationFocus = (m.creationFocus + step + 3) % 3
-					m.prompt.Blur()
-					if m.creationFocus == 0 {
-						return m, m.prompt.Focus()
-					}
-					return m, nil
-				}
+
 				if m.creationFocus == 2 {
 					if key == "space" || key == " " || key == "enter" {
-						m.switchCreation()
+						return m, m.switchCreation()
 					}
 					return m, nil
 				}
@@ -651,7 +681,11 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			before := m.folderInput.Value()
 			m.folderInput, cmd = m.folderInput.Update(message)
 			if before != m.folderInput.Value() {
-				m.refreshFolderChoices()
+				if m.sessionCreation() {
+					m.refreshSessionFolders()
+				} else {
+					m.refreshFolderChoices()
+				}
 			}
 		}
 	} else if m.modal != "" {

@@ -339,7 +339,7 @@ func TestSessionHistoryRoundTripAndDeletedEntries(t *testing.T) {
 	if !has(h.events, "switch-session source --client c1") {
 		t.Fatal(h.events)
 	}
-	files, _ := filepath.Glob(filepath.Join(h.s.State, "*.json"))
+	files, _ := filepath.Glob(filepath.Join(h.s.State, "session-history-*.json"))
 	raw, err := os.ReadFile(files[0])
 	if err != nil {
 		t.Fatal(err)
@@ -360,6 +360,42 @@ func TestSessionHistoryRoundTripAndDeletedEntries(t *testing.T) {
 	}
 	if !reflect.DeepEqual(live["10"], []string{"aa", "bb"}) {
 		t.Fatal(live)
+	}
+}
+func TestSessionHistorySharesImplicitHookAndExplicitCommandSocket(t *testing.T) {
+	t.Setenv("TUIOS_SOCKET", "")
+	h := fixture(t)
+	if err := h.s.Record(); err != nil {
+		t.Fatal(err)
+	}
+	h.clients = `[{"client_id":"c1","pid":10,"session":"destination"}]`
+	if err := h.s.Record(); err != nil {
+		t.Fatal(err)
+	}
+	// Key commands receive an explicit socket, unlike after-attach hooks.
+	t.Setenv("TUIOS_SOCKET", h.s.Socket)
+	h.s.Target = "destination"
+	if err := h.s.Last(); err != nil {
+		t.Fatal(err)
+	}
+	if !has(h.events, "switch-session source --client c1") {
+		t.Fatal(h.events)
+	}
+}
+
+func TestSessionHistoryMigratesLegacyDefault(t *testing.T) {
+	h := fixture(t)
+	legacy := filepath.Join(h.s.State, "session-history-37a8eec1ce19687d.json")
+	if err := os.WriteFile(legacy, []byte(`{"10":["bb","aa"]}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	h.clients = `[{"client_id":"c1","pid":10,"session":"destination"}]`
+	h.s.Target = "destination"
+	if err := h.s.Last(); err != nil {
+		t.Fatal(err)
+	}
+	if !has(h.events, "switch-session source --client c1") {
+		t.Fatal(h.events)
 	}
 }
 func TestRenameIdentityCreateCwdAndWorkspaceCycle(t *testing.T) {

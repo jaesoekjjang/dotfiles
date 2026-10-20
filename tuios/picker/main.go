@@ -15,11 +15,14 @@ func run(args []string) error {
 		command = args[0]
 	}
 	if command == "--help" || command == "help" || command == "-h" {
-		fmt.Println("tuios-picker [sessions|workspaces|move-pane|close-pane|close-session|close-workspace|last-session|next-workspace|prev-workspace|record-session]\nGo / Bubble Tea · TUIOS 안에서 실행")
+		fmt.Println("tuios-picker [sessions|workspaces|move-pane|close-pane|close-session|close-workspace|last-session|last-location|record-location|next-workspace|prev-workspace|record-session]\nGo / Bubble Tea · TUIOS 안에서 실행")
 		return nil
 	}
 	s := tuios.New()
 	defer s.Close()
+	if command == "record-location" {
+		return s.RecordLocation()
+	}
 	if command == "record-session" {
 		return s.Record()
 	}
@@ -33,6 +36,8 @@ func run(args []string) error {
 		return fmt.Errorf("TUIOS 안에서 실행하세요")
 	}
 	switch command {
+	case "last-location":
+		return s.LastLocation()
 	case "last-session":
 		return s.Last()
 	case "next-workspace":

@@ -87,13 +87,13 @@ func TestCreationNavigationAndFolderShortcut(t *testing.T) {
 	m := ready()
 	pressCreate(m)
 	m.prompt.SetValue("keep")
-	m.Update(ctrl('l'))
-	if m.creationFocus != 1 || m.folderEditing {
-		t.Fatal("C-l must navigate, not edit folder")
+	m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	if !m.folderEditing {
+		t.Fatal("Tab must focus the folder input directly")
 	}
-	m.Update(ctrl('h'))
+	m.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
 	if m.creationFocus != 0 || !m.prompt.Focused() {
-		t.Fatal("C-h must navigate back")
+		t.Fatal("Shift-Tab must focus the name")
 	}
 	m.Update(ctrl('o'))
 	if !m.folderEditing {
@@ -101,9 +101,9 @@ func TestCreationNavigationAndFolderShortcut(t *testing.T) {
 	}
 	m.folderChoices = []folderChoice{{path: "a"}, {path: "b"}}
 	m.folderChoiceIndex = -1
-	m.Update(ctrl('l'))
 	m.Update(ctrl('j'))
-	m.Update(ctrl('h'))
+	m.Update(ctrl('j'))
+	m.Update(ctrl('k'))
 	if m.folderChoiceIndex != 0 {
 		t.Fatal("candidate aliases disagree")
 	}

@@ -325,7 +325,7 @@ restore_minimized_9 = ['shift+9', '(']
 
 [keybindings.prefix_mode]
 hints = ['f']
-launcher = ['a']
+launcher = ['p']
 next_session = [')']
 paste_image = ['I']
 prefix_close_session = []
@@ -373,7 +373,7 @@ rename_workspace = [',']
 prefix_split_horizontal = ['-', 'ctrl+s']
 prefix_split_vertical = ['|', '\', 'ctrl+v']
 prefix_tape = ['T']
-prefix_toggle_sidebar = ['b']
+prefix_toggle_sidebar = []
 prefix_toggle_tiling = ['space']
 prefix_window = []
 prefix_workspace = ['W']
@@ -398,7 +398,7 @@ terminal_focus_left = ['h', 'left']
 terminal_focus_right = ['l', 'right']
 terminal_focus_up = ['k', 'up']
 toggle_scratch = []
-prefix_toggle_spotlight = ['B']
+prefix_toggle_spotlight = []
 
 [keybindings.window_prefix]
 window_prefix_cancel = ['esc']
@@ -550,12 +550,6 @@ width = '95%'
 height = '90%'
 
 [[keybindings.command]]
-key = 'prefix+p'
-type = 'popup'
-command = 'tuios-trial project'
-description = '프로젝트 선택'
-
-[[keybindings.command]]
 key = 'prefix+g'
 type = 'popup'
 command = 'tuios-trial app lazygit'
@@ -602,7 +596,21 @@ command = 'tuios-picker prev-workspace'
 description = '이전 workspace'
 
 [[keybindings.command]]
+key = 'prefix+b'
+name = 'last-location'
+type = 'shell'
+command = 'tuios-picker last-location'
+description = '직전 작업 위치로 돌아가기 (session·workspace 통합)'
+
+[[keybindings.command]]
 key = 'prefix+backspace'
+name = 'last-location-backspace'
+type = 'shell'
+command = 'tuios-picker last-location'
+description = '직전 작업 위치로 돌아가기 (session·workspace 통합)'
+
+[[keybindings.command]]
+key = 'prefix+B'
 name = 'last-session'
 type = 'shell'
 command = 'tuios-picker last-session'
@@ -732,6 +740,7 @@ autorun = 'ask'
 auto_review = false
 
 [hooks]
+after-workspace-switch = ['"$HOME/.local/bin/tuios-picker" record-location']
 after-attach = ['"$HOME/.local/bin/tuios-picker" record-session', '"$HOME/.local/bin/tuios-trial" _initialize-sidebar', '"$HOME/.local/bin/tuios-trial" _initialize-layout']
 
 [debug]

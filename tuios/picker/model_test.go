@@ -382,6 +382,9 @@ func TestCreatedItemStaysInPickerAndIsSelected(t *testing.T) {
 			m.search.SetValue("old")
 			m.refilter("", true)
 			pressCreate(m)
+			if m.sessionCreation() {
+				m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+			}
 			m.prompt.SetValue("new")
 			_, create := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 			result := create().(actionMsg)

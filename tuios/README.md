@@ -20,14 +20,15 @@ TUIOS의 대화형 zsh에서도 이 값을 제거한다. 기존 Codex 프로세�
 
 | 키 | 동작 |
 |---|---|
-| `Ctrl-b p` | 프로젝트 picker 바로 열기 |
+| `Ctrl-b p` | 앱 런처 (프로그램 검색 후 새 pane에서 실행) |
 | `Ctrl-b h/j/k/l` 또는 방향키 | pane 이동 |
 | `Ctrl-b Ctrl-v` 또는 `Ctrl-b \` | 좌우 분할 (오른쪽에 새 pane) |
 | `Ctrl-b Ctrl-s` 또는 `Ctrl-b -` | 상하 분할 (아래에 새 pane) |
 | `Ctrl-b H/J/K/L` | 왼쪽/아래/위/오른쪽 pane과 자리 교환 |
 | `Ctrl-b Ctrl-l` | layout 메뉴 (`s`: 저장, `l`: 불러오기) |
 | `Ctrl-b o` | split 회전 (기존 `Ctrl-b R`, BSP에서 사용) |
-| `Ctrl-b Backspace` | 직전 session 왕복 (현재 client의 이동 이력) |
+| `Ctrl-b b` 또는 `Ctrl-b Backspace` | 직전 작업 위치 왕복 (session·workspace 통합) |
+| `Ctrl-b B` | 직전 session 왕복 |
 | `Ctrl-b z` | 현재 pane 확대 |
 | `Ctrl-b Ctrl-x` | 현재 session 종료 확인창 → 다른 session으로 이동 후 종료 (마지막 session이면 TUIOS 종료) |
 | `Ctrl-b &` | 현재 workspace 종료 확인창 → 모든 pane·이름 제거 후 이웃 workspace로 이동 |
@@ -49,8 +50,6 @@ TUIOS의 대화형 zsh에서도 이 값을 제거한다. 기존 Codex 프로세�
 | `Ctrl-b ~` | 설정 (Shift+백틱) |
 | 창 관리 모드 / sidebar의 `n` | 현재 세션에 새 창 (sidebar에서는 `t`도 가능) |
 | 창 관리 모드 / sidebar의 `N` | 새 세션 |
-| `Ctrl-b b` | sidebar 표시·숨기기 |
-| `Ctrl-b B` | spotlight 켜기·끄기 (창 관리 모드에서는 `B`) |
 | `Ctrl-b i` | agent Inbox |
 | `Ctrl-b g` | Lazygit popup (`q`로 닫기) |
 | `Ctrl-b f` | 화면의 URL·경로·해시 등에 힌트 표시 → 라벨 입력으로 복사 |
@@ -76,7 +75,7 @@ CodeDiff popup은 pane 영역의 100%를 채운다. 상단바·sidebar와 popup 
 
 애니메이션을 끄고, Neovim의 `Ctrl-p`를 보존한다. Option+숫자와 일부 Option+문자는 AeroSpace에 맡긴다.
 `Option-Esc`의 창 관리 모드 전환은 해제했다. 빠른 `Esc Esc`와 같은 입력으로 해석될 수 있어 Codex 같은 pane 내부 앱의 Esc를 가로채기 때문이다. 창 관리 모드는 `Ctrl-b Esc`로 들어간다.
-`Ctrl-b p` → 프로젝트 선택으로 세션을 준비한 뒤 `Ctrl-b s`에서 해당 세션으로 이동한다.
+`tuios-trial project`로 프로젝트를 선택해 세션을 준비한 뒤 `Ctrl-b s`에서 해당 세션으로 이동한다.
 기존 메뉴는 `tuios-trial menu`로 열 수 있다. editor/agent/review 항목은 새 pane을 만든다.
 기존 세션이 있으면 다시 만들지 않는다. 프로젝트 목록은 `w project`와 같은 캐시를 사용한다.
 본 저장소와 연결된 worktree를 `프로젝트 / 작업명 · 브랜치`로 표시하며 이름과 브랜치로 검색한다.
@@ -87,7 +86,11 @@ CodeDiff popup은 pane 영역의 100%를 채운다. 상단바·sidebar와 popup 
 예: `ai-chat attachment`는 ai-chat 프로젝트의 attachment worktree를 좁힌다.
 `^anchorbase`는 프로젝트 이름의 시작 부분을 고정하고, `'anchorbase`는 문자열을 그대로 검색한다.
 `^anchorbase !docs`는 anchorbase 프로젝트에서 docs가 들어간 이름·브랜치를 제외한다.
-Spotlight는 기본으로 꺼져 있다. 일반 `b`에 잘못 켜지지 않도록 대문자 `B`로 분리했다.
+`prefix b` 또는 `prefix Backspace`는 직전 `(session, workspace)` 위치로 복귀한다.
+다시 누르면 방금 떠난 위치와 왕복한다. pane 이동은 복귀 이력에 포함하지 않는다.
+앱 런처는 `prefix p`로 옮겼고, 프로젝트 picker는 `tuios-trial project`로 실행한다.
+sidebar·spotlight의 기존 prefix 키는 해제했다.
+위치 이력은 session attach·workspace 전환 hook으로 기록하며, 비어 있거나 종료된 workspace는 복귀 대상에서 제외한다.
 창 관리 모드(`Ctrl-b Esc`)에서 `,` / `.`는 왼쪽 경계를 기준으로 너비를 줄이거나 늘린다.
 `<` / `>`는 오른쪽 경계 기준 너비 조절이고 `{` / `}`는 높이 조절이다. `=`로 비율을 균등하게 하고 `i`로 입력 모드에 복귀한다.
 keybind manager는 `Ctrl-b .`로 옮기고 `Ctrl-b j`의 알림 이동은 해제해 hjkl 이동을 보존한다.
@@ -136,8 +139,9 @@ Enter는 결과로 이동만 하고, 결과가 없으면 창을 유지한다.
 이름 변경 후 검색어와 선택 대상을 유지한다. 이름이 검색 조건에서 벗어나면 가까운 검색 결과를 선택한다.
 다른 대상을 종료한 뒤에도 검색어를 유지하며 가까운 항목으로 이동한다.
 session 이름 변경은 표시 이름만 바꾸므로 CLI identity와 프로젝트 UUID 연결을 유지한다.
-추가는 `Ctrl-a`로 생성창을 연다. 선택한 행과 같은 레벨이 기본이며, 생성창의 `Tab`/`Shift-Tab`으로 종류를 전환한다. `s`는 Session/Workspace, `w`는 Workspace/Pane을 선택할 수 있다. session 추가는 표시 이름을 입력한 뒤 현재 경로에 shell 하나를 연다.
-`Enter`는 생성 후 목록에서 새 항목을 선택한다. 빈 이름의 Enter 또는 Esc는 생성 취소다. Ctrl-c는 picker 전체를 닫는다. session의 실제 이름 변경은 `Ctrl-b $`,
+추가는 `Ctrl-a`로 생성창을 연다. 선택한 행과 같은 레벨이 기본이며, 생성창의 `[`/`]`로 종류를 전환하고, `Tab`/`Shift-Tab`으로 이름·시작 폴더를 이동한다. `s`는 Session/Workspace, `w`는 Workspace/Pane을 선택할 수 있다. session 추가는 같은 화면에서 이름과 시작 폴더를 지정해 shell 하나를 연다.
+Session 생성에서 폴더 후보는 편집할 때만 펼쳐집니다. `Enter`로 폴더를 선택하면 목록이 접히고 확정된 경로와 `세션 만들기 · Enter`가 표시됩니다. 이름을 그대로 사용할 때는 후보에서 `Ctrl-Enter`로 선택과 생성을 한 번에 실행합니다. `PgUp/PgDn`으로 후보를 페이지 단위로 이동합니다.
+`Enter`는 생성 후 목록에서 새 항목을 선택한다. 빈 이름의 Enter는 입력 안내를 표시하고, Esc는 생성을 취소한다. Ctrl-c는 picker 전체를 닫는다. session의 실제 이름 변경은 `Ctrl-b $`,
 기존 session 관리 UI는 command palette (`Ctrl-b P`)의 session switcher에서 사용할 수 있다.
 두 picker 모두 생성은 실제 session/workspace 포커스를 유지하고, 목록에서 Enter를 눌렀을 때 이동한다. 새 항목을 보이도록 생성 후 검색어를 지우고 부모를 펼친다. workspace·pane 생성 위치는 생성창에서 확인할 수 있다.
 생성 후 선택된 새 항목에서 `Ctrl-a`를 누르면 같은 부모 아래 형제를 추가한다. [생성 조작](picker/README.md#생성)은 picker 문서에 있다.
@@ -155,7 +159,7 @@ session 검색은 로컬 데몬의 세션을 표시한다. 원격 세션은 기�
 기본 배치는 master-stack이라 왼쪽 master에서 split해도 새 pane이 오른쪽 stack에 들어간다.
 현재 pane을 직접 나누려면 command palette (`Ctrl-b P`)에서 BSP 레이아웃으로 전환한 뒤
 `Ctrl-b -` (위·아래) 또는 `Ctrl-b |` (좌·우)를 사용한다.
-TUIOS 안에서 `w`를 실행하면 원래 tmux 명령을 호출하므로, 시험용 메뉴는 `Ctrl-b p`를 쓴다.
+TUIOS 안에서 `w`를 실행하면 원래 tmux 명령을 호출하므로, 프로젝트 메뉴는 `tuios-trial project`로 실행한다.
 Codex 대화는 앱 자체 스크롤로 읽는다. TUIOS의 `Shift-↑/↓` 스크롤 바인딩은 해제해
 Codex의 effort 조절 키를 보존한다. `scroll_lines = 1`로 앱에 전달하는 휠 이벤트의 증폭도 끈다.
 TUIOS copy mode는 터미널이 보관한 화면 기록만 보여주므로 Codex 전체 대화와 다를 수 있다.

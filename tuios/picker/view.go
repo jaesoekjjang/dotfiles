@@ -71,12 +71,21 @@ func (m *model) panel(title, body string, width, height int) string {
 }
 
 func (m *model) helpLines() []string {
+	if m.sessionCreation() {
+		keys := []string{"[/] 종류 전환", "Tab 필드 이동"}
+		if m.folderEditing {
+			keys = append(keys, "C-n/p·↑↓ 후보", "PgUp/Dn 페이지", "C-l 경로 완성", "Enter 선택", "C-Enter 선택+생성", "F5 갱신")
+		} else {
+			keys = append(keys, "C-o 폴더 변경", "Enter / C-Enter 생성")
+		}
+		return m.wrapHelp(append(keys, "Esc 취소"))
+	}
 	if m.folderEditing {
 		if m.projectOpen {
-			return []string{"C-h/l 또는 C-p/n 이동 · Enter 선택 · Esc 목록 닫기"}
+			return []string{"C-n/p 또는 ↑/↓ 후보 이동 · Enter 선택 · Esc 목록 닫기"}
 		}
 		if len(m.folderChoices) > 0 {
-			return []string{"C-h/l 또는 C-p/n 후보 이동 · Tab 완성 · C-o 프로젝트 찾기", "Enter 적용 (후보 선택 시 완성) · Esc 목록 닫기"}
+			return []string{"C-n/p 또는 ↑/↓ 후보 이동 · C-l 완성 · C-o 프로젝트 찾기", "Enter 적용 (후보 선택 시 완성) · Esc 목록 닫기"}
 		}
 		return []string{"입력 시 폴더 후보 표시 · C-o 프로젝트 찾기", "Enter 적용 · Esc 돌아가기"}
 	}
@@ -102,7 +111,7 @@ func (m *model) helpLines() []string {
 		if m.creationFocus == 2 {
 			action = "Space 종류 전환"
 		}
-		items = []string{"Tab 종류 전환", "C-h/l・C-p/n 항목 이동", "C-o 폴더 변경", action, "Esc 취소"}
+		items = []string{"[/] 종류 전환", "Tab 필드 이동", "C-o 폴더 변경", action, "Esc 취소"}
 	}
 	if m.mode == "move-pane" {
 		items = []string{"C-h/l・C-p/n 선택", "Enter 이동 후 따라가기", "C-Enter pane만 이동", "Esc 취소"}
@@ -114,6 +123,10 @@ func (m *model) helpLines() []string {
 			}
 		}
 	}
+	return m.wrapHelp(items)
+}
+
+func (m *model) wrapHelp(items []string) []string {
 	var lines []string
 	line := ""
 	for _, item := range items {
@@ -157,8 +170,9 @@ func (m *model) resize() {
 	d := m.dimensions()
 	m.search.SetWidth(max(5, d.leftW-15))
 	m.prompt.SetWidth(max(5, d.leftW-18))
-	m.folderInput.SetWidth(max(5, d.leftW-14))
-	m.projectInput.SetWidth(max(5, d.leftW-18))
+	// Bubbles adds a trailing cursor cell beyond the configured input width.
+	m.folderInput.SetWidth(max(5, d.leftW-5-ansi.StringWidth(m.folderInput.Prompt)))
+	m.projectInput.SetWidth(max(5, d.leftW-5-ansi.StringWidth(m.projectInput.Prompt)))
 	m.viewport.SetWidth(max(1, d.rightW-4))
 	m.viewport.SetHeight(max(1, d.rightH-7))
 }
@@ -295,6 +309,10 @@ func (m *model) rowView(row tuios.Row, width int, selected bool) string {
 
 func (m *model) listView(width, height int) string {
 	var lines []string
+	if m.sessionCreation() {
+		lines, _, _ = m.sessionCreationLines(width, height)
+		return m.panel("새 session", strings.Join(lines, "\n"), width, height)
+	}
 	if m.folderEditing {
 		input := m.folderInput.View()
 		if m.projectOpen {
@@ -481,7 +499,18 @@ func (m *model) inputCursor() *tea.Cursor {
 			return nil
 		}
 		input, x, y = m.prompt, 3, 5
-		if m.folderEditing {
+		if m.sessionCreation() {
+			d := m.dimensions()
+			_, folderLine, nameLine := m.sessionCreationLines(d.leftW, d.leftH-3)
+			if m.folderEditing {
+				input = m.folderInput
+				y = 4 + folderLine
+			} else if m.creationFocus == 0 {
+				y = 4 + nameLine
+			} else {
+				return nil
+			}
+		} else if m.folderEditing {
 			input = m.folderInput
 			if m.projectOpen {
 				input = m.projectInput

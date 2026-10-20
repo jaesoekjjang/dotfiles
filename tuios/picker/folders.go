@@ -97,9 +97,7 @@ func parseProjects(data string) []folderChoice {
 }
 
 func (m *model) openProjects() tea.Cmd {
-	m.projectOpen, m.projectLoading = true, true
-	m.projectGeneration++
-	generation := m.projectGeneration
+	m.projectOpen = true
 	m.folderChoices, m.projects = nil, nil
 	m.folderChoiceIndex = 0
 	m.status = ""
@@ -107,18 +105,23 @@ func (m *model) openProjects() tea.Cmd {
 	m.projectInput.Reset()
 	m.projectInput.Prompt = "프로젝트 › "
 	m.projectInput.Placeholder = "프로젝트 / worktree 검색"
-	focus := m.projectInput.Focus()
-	return tea.Batch(focus, func() tea.Msg {
+	return tea.Batch(m.projectInput.Focus(), m.loadProjects())
+}
+
+func (m *model) loadProjects() tea.Cmd {
+	m.projectLoading = true
+	m.projectGeneration++
+	generation := m.projectGeneration
+	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 		command := "workspace"
-		// The wrapper exports its own sibling script, independent of PATH.
 		if trial := os.Getenv("TUIOS_PICKER_TRIAL"); trial != "" {
 			command = filepath.Join(filepath.Dir(trial), "workspace")
 		}
 		output, err := exec.CommandContext(ctx, command, "_projects").Output()
 		return projectsMsg{generation: generation, choices: parseProjects(string(output)), err: err}
-	})
+	}
 }
 
 func (m *model) filterProjects() {
@@ -148,10 +151,10 @@ func (m *model) updateProjects(msg tea.KeyPressMsg) tea.Cmd {
 		m.projectInput.Blur()
 		m.status = ""
 		return m.folderInput.Focus()
-	case "ctrl+n", "ctrl+l", "ctrl+j", "tab", "ctrl+p", "ctrl+h", "ctrl+k", "shift+tab":
+	case "ctrl+n", "ctrl+j", "down", "ctrl+p", "ctrl+k", "up":
 		if len(m.folderChoices) > 0 {
 			step := 1
-			if msg.String() == "ctrl+p" || msg.String() == "ctrl+h" || msg.String() == "ctrl+k" || msg.String() == "shift+tab" {
+			if msg.String() == "ctrl+p" || msg.String() == "ctrl+k" || msg.String() == "up" {
 				step = -1
 			}
 			m.folderChoiceIndex = (m.folderChoiceIndex + step + len(m.folderChoices)) % len(m.folderChoices)

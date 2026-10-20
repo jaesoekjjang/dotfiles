@@ -97,7 +97,7 @@ func TestCreationTypeAndParentFromFilteredChild(t *testing.T) {
 				t.Fatal("switch without losing name or parent")
 			}
 			view := ansi.Strip(m.View().Content)
-			if !strings.Contains(view, "project") || !strings.Contains(view, "C-h/l・C-p/n 항목 이동") || strings.Contains(view, "Preview") {
+			if !strings.Contains(view, "project") || !strings.Contains(view, "Tab 필드 이동") || strings.Contains(view, "Preview") {
 				t.Fatal(view)
 			}
 			switchCreationWithKeys(m)
@@ -200,5 +200,5 @@ func TestCreationFormFitsNarrowScreens(t *testing.T) {
 }
 
 func switchCreationWithKeys(m *model) {
-	m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	m.Update(tea.KeyPressMsg{Code: ']', Text: "]"})
 }
