@@ -10,6 +10,10 @@ Neovim 0.12에서는 parser가 없는 파일 타입의 `get_parser()`가 `nil`�
 parser 없이 정상 동작해야 한다. 삭제된 컴파일러 wrapper가 `CC`에 남은 경우에는
 parser 설치가 시스템 컴파일러를 사용하도록 한다.
 
+# 가운데 정렬
+
+일반 편집 창은 시작 시와 새 탭에서 NoNeckPain을 자동 적용한다. 목표 너비는 145이며 `<leader>lc`로 켜고 끈다.
+
 # TUIOS 테마 연동
 
 Neovim은 로컬 TUIOS `config.toml`의 `[appearance] theme`을 읽는다. 저장된 설정을 감시하므로 새 Neovim뿐 아니라 실행 중인 편집기도 테마를 확정하면 갱신된다. 테마 선택기의 미리보기는 파일을 저장하지 않으므로 Neovim에 반영하지 않는다. `:ThemeSync`로 수동 재적용할 수도 있다.
