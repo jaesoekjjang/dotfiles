@@ -16,6 +16,9 @@ export ZSH="$HOME/.oh-my-zsh"
 
 ZSH_THEME="powerlevel10k/powerlevel10k"
 
+# 명령 실행 시 사용할 수 있는 alias를 자동으로 알려줍니다.
+ZSH_ALIAS_FINDER_AUTOMATIC=true
+
 plugins=(git
   zsh-autosuggestions
   zsh-syntax-highlighting
@@ -87,3 +90,4 @@ export PATH="/Applications/Docker.app/Contents/Resources/bin:$PATH"
 
 # 독립 설치한 CLI는 프로젝트의 Node 버전과 관계없이 사용합니다.
 path=("$HOME/.local/bin" "${path[@]}")
+
